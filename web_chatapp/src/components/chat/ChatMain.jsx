@@ -420,7 +420,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
 
   if (!selectedChat)
     return (
-      <div className="flex-1 flex items-center justify-center bg-background dark:bg-background">
+      <div className="flex-1 flex items-center justify-center bg-gradient-to-b from-[#E4E9FC] to-[#FFFFFF] dark:bg-background">
         <div className="text-center">
           <div className="w-24 h-24 bg-indigo-100 dark:bg-card rounded-full flex items-center justify-center mx-auto mb-4">
             <Send className="h-12 w-12 text-indigo-600 dark:text-foreground" />
@@ -441,9 +441,9 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
     return <div className="p-4 text-center text-red-500 dark:text-red-400">Failed to load messages</div>;
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background dark:bg-background">
+    <div className="flex-1 flex flex-col h-full bg-gradient-to-b from-[#E4E9FC] to-[#FFFFFF] dark:bg-background">
       {/* Header */}
-      <div className="p-4 border-b border-indigo-200 dark:border-border bg-card dark:bg-card flex justify-between items-center">
+      <div className="p-4 border-b border-gray-200 dark:border-border bg-white dark:bg-card flex justify-between items-center">
         <div className="flex items-center gap-3 cursor-pointer" onClick={onContactInfoClick}>
           <Avatar className="h-10 w-10">
             <AvatarImage src={selectedChatInfo?.avatar || "/placeholder.svg"} />
@@ -461,7 +461,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background dark:bg-background">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-transparent dark:bg-background">
         {allMessages.map((msg, index) => {
           const isOwn = msg.sender?.id === currentUser?.id;
           return (
@@ -478,9 +478,9 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                 </Avatar>
                 <div className={`flex flex-col ${isOwn ? "items-end mr-2" : "items-start ml-2"}`}>
                   <div
-                    className={`px-4 py-2 rounded-lg break-words ${isOwn
-                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 dark:bg-primary text-white rounded-br-none"
-                      : "bg-indigo-100 dark:bg-card text-indigo-900 dark:text-foreground rounded-bl-none"
+                    className={`px-4 py-2 rounded-2xl break-words ${isOwn
+                      ? "bg-[#7F56DA] dark:bg-[#7F56DA] text-white rounded-br-none"
+                      : "bg-gradient-to-br from-[#F5F5F7] to-[#EBEBF2] dark:bg-card text-gray-700 dark:text-foreground rounded-bl-none shadow-[0_1px_2px_rgba(0,0,0,0.04)] border border-[#E8E8EE]/80"
                       } ${msg.temp ? "opacity-70 italic" : ""}`}
                   >
                     <p className="text-sm">{msg.message}</p>
@@ -519,7 +519,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                                   href={att.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex items-center text-xs text-indigo-50/90 dark:text-foreground/90 hover:underline"
+                                  className="flex items-center text-xs opacity-90 hover:underline"
                                 >
                                   <Paperclip className="h-3 w-3 mr-1" />
                                   <span>{att.name || 'Download file'}</span>
@@ -596,7 +596,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                     )}
                   </div>
 
-                  <p className="text-xs text-indigo-600 dark:text-muted-foreground mt-1">{formatTime(msg.timestamp)}</p>
+                  <p className="text-xs text-gray-500 dark:text-muted-foreground mt-1">{formatTime(msg.timestamp)}</p>
                 </div>
               </div>
             </div>
@@ -607,12 +607,12 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
 
       {/* Selected Files Preview */}
       {attachedFiles.length > 0 && (
-        <div className="px-4 py-2 border-t border-indigo-200 dark:border-border bg-card dark:bg-card">
+        <div className="px-4 py-2 border-t border-[#E4E9FC]/60 dark:border-border bg-[#E4E9FC] dark:bg-card">
           <div className="flex flex-wrap gap-2 items-center">
             {attachedFiles.map((file, index) => (
               <div
                 key={`${file.name}-${index}`}
-                className="flex items-center gap-2 bg-muted dark:bg-muted px-2 py-1 rounded border border-indigo-200 dark:border-border"
+                className="flex items-center gap-2 bg-gray-100 dark:bg-muted px-2 py-1 rounded border border-gray-200 dark:border-border"
               >
                 {file.type.startsWith('image/') && (
                   <img
@@ -645,12 +645,12 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
       )}
 
       {/* Input */}
-      <form onSubmit={handleSendMessage} className="p-4 flex gap-2 items-center border-t border-indigo-200 dark:border-border bg-card dark:bg-card">
+      <form onSubmit={handleSendMessage} className="p-4 flex gap-2 items-center border-t border-[#E4E9FC]/60 dark:border-border bg-[#E4E9FC] dark:bg-card">
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          className="text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"
+          className="text-[#7C84C8] dark:text-[#8A92D4] hover:bg-[#D0D4F0] dark:hover:bg-[#8A92D4]/20 rounded-full h-9 w-9 p-0"
         >
           <Smile className="h-4 w-4" />
         </Button>
@@ -669,7 +669,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
           variant="ghost"
           size="sm"
           onClick={handleFileButtonClick}
-          className="text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"
+          className="text-[#7C84C8] dark:text-[#8A92D4] hover:bg-[#D0D4F0] dark:hover:bg-[#8A92D4]/20 rounded-full h-9 w-9 p-0"
           title="Attach files (images & videos)"
         >
           <Paperclip className="h-4 w-4" />
@@ -681,8 +681,8 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
           variant="ghost"
           size="sm"
           onClick={toggleRecording}
-          className={`${isRecording ? "text-red-600" : "text-indigo-700 dark:text-foreground"
-            } hover:bg-indigo-100 dark:hover:bg-accent`}
+          className={`rounded-full h-9 w-9 p-0 ${isRecording ? "text-red-600" : "text-[#7C84C8] dark:text-[#8A92D4]"
+            } hover:bg-[#D0D4F0] dark:hover:bg-[#8A92D4]/20`}
         >
           {isRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
         </Button>
@@ -692,13 +692,13 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder="Type your message..."
-          className="border-indigo-300 dark:border-border focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500 dark:focus:ring-primary flex-1 bg-muted dark:bg-input text-gray-900 dark:text-foreground placeholder:text-gray-500 dark:placeholder:text-muted-foreground"
+          className="rounded-full border-0 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] focus-visible:ring-2 focus-visible:ring-[#8A92D4]/35 dark:focus-visible:ring-[#8A92D4]/40 flex-1 bg-white dark:bg-input text-gray-900 dark:text-foreground placeholder:text-[#A0A8C8] dark:placeholder:text-muted-foreground h-10 px-4"
         />
 
         <Button
           type="submit"
           disabled={!newMessage.trim() && attachedFiles.length === 0}
-          className="bg-gradient-to-r from-indigo-600 to-purple-600 dark:bg-primary text-white hover:from-indigo-700 hover:to-purple-700 dark:hover:bg-primary/90"
+          className="rounded-full h-10 w-10 p-0 bg-[#8A92D4] dark:bg-[#8A92D4] text-white hover:bg-[#7C84C8] dark:hover:bg-[#7C84C8]"
         >
           <Send className="h-5 w-5" />
         </Button>
