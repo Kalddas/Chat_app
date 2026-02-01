@@ -18,8 +18,11 @@ export const userApi = createApi({
       query: () => "user/profile",
       providesTags: ['profile'],
       transformResponse: (response) => {
-        // console.log("User Profile Response:", response);
-        return response;
+        // Add a timestamp to help with cache-busting when the data actually changes
+        return {
+          ...response,
+          timestamp: Date.now()
+        };
       },
     }),
 

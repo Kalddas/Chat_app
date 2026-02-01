@@ -403,15 +403,14 @@ export function ProfileView({ isOpen, onClose }) {
                       <AvatarImage
                         src={(() => {
                           // 1. Preview (newly selected file)
-                          if (profileImage) {
-                            return URL.createObjectURL(profileImage);
+                          if (profileImage && objectUrlRef.current) {
+                            return objectUrlRef.current;
                           }
                           // 2. Server URL (if exists)
                           const url = formData.profile_picture_url || profile?.profile_picture_url;
                           if (url) {
-                            return `${url}${url.includes('?') ? '&' : '?'}t=${new Date().getTime()}`;
+                            return `${url}${url.includes('?') ? '&' : '?'}t=${profileData?.timestamp || 'initial'}`;
                           }
-                          // 3. Fallback logic handled by onError
                           return null;
                         })()}
                         alt={profile?.first_name || "Profile"}

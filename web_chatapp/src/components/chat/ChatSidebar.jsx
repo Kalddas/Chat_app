@@ -99,23 +99,15 @@ export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSel
                   <>
                     <AvatarImage
                       src={(() => {
-                        const profileSrc = profile?.profile_picture_url;
-                        if (profileSrc) {
-                          return `${profileSrc}${profileSrc.includes('?') ? '&' : '?'}t=${new Date().getTime()}`;
-                        }
-                        return null;
+                        const url = profile?.profile_picture_url || user?.profile_picture_url;
+                        if (!url) return null;
+                        return `${url}${url.includes('?') ? '&' : '?'}t=${profileData?.timestamp || 'initial'}`;
                       })()}
-                      alt={profile?.first_name}
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                      onLoad={(e) => {
-                        e.target.style.display = 'block';
-                      }}
+                      alt={profile?.first_name || user?.first_name}
                       className="object-cover"
                     />
                     <AvatarFallback className="bg-indigo-100 dark:bg-card text-indigo-700 dark:text-foreground">
-                      {profile?.first_name?.charAt(0) || "U"}
+                      {profile?.first_name?.charAt(0) || user?.first_name?.charAt(0) || "U"}
                     </AvatarFallback>
                   </>
                 )}

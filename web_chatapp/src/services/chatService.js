@@ -40,7 +40,7 @@ export const chatApi = createApi({
 
     }),
     sendMessage: builder.mutation({
-      query: ({ conversationId, receiver_id, text, files }) => {
+      query: ({ conversationId, receiver_id, text, files, reply_to_id }) => {
         // If files are provided, send multipart/form-data
         if (files && files.length) {
           const formData = new FormData();
@@ -48,6 +48,9 @@ export const chatApi = createApi({
             formData.append("text", text);
           }
           formData.append("receiver_id", receiver_id);
+          if (reply_to_id) {
+            formData.append("reply_to_id", reply_to_id);
+          }
           files.forEach((file) => {
             formData.append("attachments[]", file);
           });
@@ -63,7 +66,7 @@ export const chatApi = createApi({
         return {
           url: `chat/conversations/${conversationId}/messages/send`,
           method: "POST",
-          body: { text, receiver_id },
+          body: { text, receiver_id, reply_to_id },
         };
       },
       invalidatesTags: ["Chat"],
