@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import echo from "../services/echo";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const WebSocketContext = createContext();
 
@@ -11,6 +12,7 @@ export const useWebSocket = () => {
 };
 
 export const WebSocketProvider = ({ children }) => {
+  const { user } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [connectionState, setConnectionState] = useState("disconnected");
   const [messages, setMessages] = useState({}); // { conversationId: [messages] }
@@ -33,6 +35,25 @@ export const WebSocketProvider = ({ children }) => {
 
     return () => echo.disconnect();
   }, []);
+
+  // Listen for user notifications
+  useEffect(() => {
+    if (isConnected && user?.id) {
+      const notificationChannel = `App.Models.User.${user.id}`;
+      console.log(`Subscribing to notifications on ${notificationChannel}`);
+
+      echo.private(notificationChannel).notification((notification) => {
+        console.log("New notification received via WebSocket:", notification);
+        // Dispatch a custom event so other components can react
+        window.dispatchEvent(new CustomEvent("chat:newNotification", { detail: notification }));
+      });
+
+      return () => {
+        console.log(`Leaving notification channel ${notificationChannel}`);
+        echo.leave(notificationChannel);
+      };
+    }
+  }, [isConnected, user?.id]);
 
   // Join a conversation channel
   const joinConversation = useCallback((conversationId) => {
@@ -74,7 +95,7 @@ export const WebSocketProvider = ({ children }) => {
     if (!echo) return false;
     try {
       echo.private(`private-conversation.${conversationId}`)
-          .whisper("message", { message: messageText });
+        .whisper("message", { message: messageText });
       return true;
     } catch (err) {
       console.error("WebSocket send failed", err);

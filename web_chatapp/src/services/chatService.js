@@ -117,6 +117,13 @@ export const chatApi = createApi({
       }),
       invalidatesTags: ["Chat"],
     }),
+    markAsRead: builder.mutation({
+      query: (conversationId) => ({
+        url: `chat/conversations/${conversationId}/read`,
+        method: "POST",
+      }),
+      invalidatesTags: ["Chat"],
+    }),
     addReaction: builder.mutation({
       query: ({ messageId, emoji }) => ({
         url: `chat/messages/${messageId}/reactions`,
@@ -140,5 +147,6 @@ export const {
   useDeleteMessageMutation,
   useGetAllConversationsQuery,
   useDeleteConversationMutation,
+  useMarkAsReadMutation,
   useAddReactionMutation,
 } = chatApi;

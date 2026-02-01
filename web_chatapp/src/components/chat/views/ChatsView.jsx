@@ -46,7 +46,7 @@ export function ChatsView({ searchQuery, selectedChat, onChatSelect }) {
       name: `${otherUser?.first_name ?? ''} ${otherUser?.last_name ?? ''}`.trim() || (otherUser?.user_name ?? 'Unknown'),
       username: otherUser?.user_name ?? '',
       avatar: otherUser?.profile_picture_url || "/placeholder.svg",
-      lastMessage: chat.last_message?.message || "No messages yet",
+      lastMessage: chat.last_message ? (chat.last_message.message || "") : "No messages yet",
       timestamp: chat.last_message?.sent_at || chat.last_message_time,
       unreadCount: chat.unread_count || 0,
       isOnline: onlineUsers?.has(otherUser?.id),
@@ -56,9 +56,9 @@ export function ChatsView({ searchQuery, selectedChat, onChatSelect }) {
 
   const filteredChats = searchQuery
     ? chats.filter(chat =>
-        chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        chat.username.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      chat.username.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : chats;
 
   const formatTimestamp = (timestamp) => {

@@ -1,5 +1,4 @@
-// File: src/components/chat/ChatSidebar.jsx
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -27,22 +26,66 @@ import { ProfileView } from "./views/ProfileView"
 import { SettingsView } from "./views/SettingsView"
 import { useLogoutMutation } from "../../services/authService"
 import { useGetUserProfileQuery } from "../../services/userService"
+import { useGetAllConversationsQuery, useGetReceivedRequestsQuery } from "../../services/chatService"
 import { useTheme } from "@/contexts/ThemeContext"
 import { NotificationBell } from "../NotificationBell"
+import { Badge } from "@/components/ui/badge"
 
 export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSelect }) {
   const { user, logout } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const [logoutApi, { isLoading: isLoggingOut }] = useLogoutMutation();
+
   const {
     data: profileData,
     isLoading: profileLoading,
     error: profileError,
   } = useGetUserProfileQuery(undefined, {
-    refetchOnMountOrArgChange: true, // Ensure fresh profile after login
+    refetchOnMountOrArgChange: true,
   })
   const profile = profileData?.profile
+
+  // Fetch conversations to get unread message count
+  const {
+    data: conversationsData,
+    refetch: refetchConversations
+  } = useGetAllConversationsQuery(
+    { userId: user?.id },
+    { pollingInterval: 30000, skip: !user?.id }
+  )
+
+  // Fetch received requests for badge count
+  const {
+    data: requestsData,
+    refetch: refetchRequests
+  } = useGetReceivedRequestsQuery(undefined, {
+    pollingInterval: 30000,
+    skip: !user?.id
+  })
+
+  // Listen for real-time notifications
+  useEffect(() => {
+    const handleNotification = (e) => {
+      const notification = e.detail;
+      console.log("ChatSidebar received real-time notification:", notification);
+
+      // Refetch relevant data based on notification type
+      if (notification.type === 'new_message' || notification.type === 'message_deleted') {
+        refetchConversations();
+      } else if (notification.type === 'chat_request') {
+        refetchRequests();
+      } else {
+        // Default: refetch both to be safe
+        refetchConversations();
+        refetchRequests();
+      }
+    };
+
+    window.addEventListener("chat:newNotification", handleNotification);
+    return () => window.removeEventListener("chat:newNotification", handleNotification);
+  }, [refetchConversations, refetchRequests]);
+
   const { theme, setTheme } = useTheme()
 
   if (!user) return null
@@ -60,10 +103,14 @@ export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSel
     }
   };
 
+  // Calculate counts
+  const unreadMessagesCount = conversationsData?.conversations?.reduce((acc, chat) => acc + (chat.unread_count || 0), 0) || 0
+  const pendingRequestsCount = requestsData?.length || 0
+
   const navigationItems = [
-    { id: "chats", label: "Chats", icon: MessageCircle },
+    { id: "chats", label: "Chats", icon: MessageCircle, badge: unreadMessagesCount },
     { id: "discovery", label: "Discovery", icon: Users },
-    { id: "requests", label: "Requests", icon: UserPlus },
+    { id: "requests", label: "Requests", icon: UserPlus, badge: pendingRequestsCount },
     { id: "profile", label: "Profile", icon: User },
     { id: "settings", label: "Settings", icon: Settings },
   ]
@@ -191,12 +238,19 @@ export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSel
                 variant={currentView === item.id ? "default" : "ghost"}
                 size="sm"
                 onClick={() => onViewChange(item.id)}
-                className={`flex-1 justify-center ${currentView === item.id
+                className={`flex-1 justify-center relative ${currentView === item.id
                   ? "bg-[#7B42F6] text-white hover:bg-[#7B42F6]/90"
                   : "text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"
                   }`}
               >
                 <item.icon className="h-4 w-4" />
+                {item.badge > 0 && (
+                  <Badge
+                    className="absolute -top-1 -right-1 h-4 min-w-[1rem] flex items-center justify-center p-0 text-[10px] bg-red-500 text-white border-none shadow-sm"
+                  >
+                    {item.badge > 9 ? '9+' : item.badge}
+                  </Badge>
+                )}
               </Button>
             ))}
           </div>
