@@ -6,10 +6,12 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../..
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Alert, AlertDescription } from "../../components/ui/alert";
-import { Loader2, MessageCircle, CheckCircle, ArrowLeft } from "lucide-react";
+import { Loader2, MessageCircle, CheckCircle } from "lucide-react";
 import { useForgotPasswordMutation } from "../../services/authService";
+import { useTranslation } from "react-i18next";
 
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -23,13 +25,13 @@ export default function ForgotPasswordPage() {
     setError("");
 
     if (!email) {
-      setError("Please enter your email address");
+      setError(t("errors.validationFailed"));
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError("Please enter a valid email address");
+      setError(t("errors.validationFailed"));
       return;
     }
 
@@ -44,7 +46,7 @@ export default function ForgotPasswordPage() {
         || errorData?.error 
         || err?.message 
         || (errorData?.errors && typeof errorData.errors === 'object' && errorData.errors.email?.[0])
-        || "Failed to send reset link. Please try again or contact support.";
+        || t("errors.failedToSend");
       
       console.error('Forgot password error:', err);
       setError(errorMessage);
@@ -52,23 +54,22 @@ export default function ForgotPasswordPage() {
   };
 
   if (isSuccess) {
-
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-background">
-        <Card className="max-w-md w-full shadow-xl bg-white dark:bg-card">
+        <Card className="max-w-md w-full shadow-xl bg-white dark:bg-card border border-indigo-100 dark:border-white/30">
           <CardHeader className="text-center pb-6">
             <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
-            <CardTitle className="text-2xl text-gray-900">Temporary Password Generated</CardTitle>
-            <CardDescription className="text-gray-600 mt-2">
-              Your temporary password has been generated
+            <CardTitle className="text-2xl text-gray-900 dark:text-foreground">{t("auth.temporaryPasswordGenerated")}</CardTitle>
+            <CardDescription className="text-gray-600 dark:text-muted-foreground mt-2">
+              {t("auth.temporaryPasswordGeneratedMessage")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Alert variant="default" className="bg-blue-50 border-blue-200">
               <AlertDescription className="text-blue-800">
-                <strong>Check your email!</strong> The temporary password has been sent to your email address.
+                <strong>{t("auth.checkEmailTemporaryPassword")}</strong>
               </AlertDescription>
             </Alert>
             
@@ -76,13 +77,13 @@ export default function ForgotPasswordPage() {
               <>
                 <Alert variant="default" className="bg-yellow-50 border-yellow-200">
                   <AlertDescription className="text-yellow-800">
-                    <strong>Email sending failed.</strong> Use this temporary password below to login.
+                    <strong>{t("auth.emailSendFailedUseThisPassword")}</strong>
                   </AlertDescription>
                 </Alert>
                 
                 <div className="bg-gray-100 p-4 rounded-lg border-2 border-gray-300">
-                  <Label className="text-sm text-gray-600">Your Temporary Password:</Label>
-                  <div className="mt-2 flex items-center justify-between bg-white dark:bg-card px-3 py-2 rounded border border-gray-300 dark:border-border">
+                  <Label className="text-sm text-gray-600">{t("auth.temporaryPasswordLabel")}</Label>
+                  <div className="mt-2 flex items-center justify-between bg-white dark:bg-card px-3 py-2 rounded border border-gray-300 dark:border-white/20">
                     <code className="text-lg font-mono font-semibold text-gray-900 select-all">{temporaryPassword}</code>
                     <Button 
                       variant="ghost" 
@@ -90,8 +91,8 @@ export default function ForgotPasswordPage() {
                       onClick={() => {
                         navigator.clipboard.writeText(temporaryPassword);
                       }}
-                    >
-                      Copy
+                      >
+                      {t("auth.copy")}
                     </Button>
                   </div>
                 </div>
@@ -99,10 +100,10 @@ export default function ForgotPasswordPage() {
             )}
             
             <div className="text-center text-sm text-gray-500">
-              <p>{temporaryPassword ? 'Use this password to login' : 'Check your email for the temporary password to login'}</p>
+              <p>{temporaryPassword ? t("auth.useThisPasswordToLogin") : t("auth.checkEmailForTemporaryPassword")}</p>
             </div>
             <Button className="w-full" size="lg" onClick={() => navigate("/login")}>
-              Go to Login
+              {t("auth.goToLogin")}
             </Button>
           </CardContent>
         </Card>
@@ -113,28 +114,28 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-background">
       <div className="w-full max-w-md">
-        <Card className="shadow-xl bg-white dark:bg-card">
+        <Card className="shadow-xl bg-white dark:bg-card border border-indigo-100 dark:border-white/30">
           <CardHeader className="text-center pb-6">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
               <MessageCircle className="h-6 w-6 text-blue-600" />
             </div>
-            <CardTitle className="text-2xl text-gray-900">Forgot Password?</CardTitle>
-            <CardDescription className="text-gray-600">
-              No worries! Enter your email and we'll send you a reset link.
+            <CardTitle className="text-2xl text-gray-900 dark:text-foreground">{t("auth.forgotPassword")}</CardTitle>
+            <CardDescription className="text-gray-600 dark:text-muted-foreground">
+              {t("auth.loginSubtitle")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email Address</Label>
+                <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-foreground">{t("auth.email")}</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email address"
+                  placeholder={t("auth.emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-11"
+                  className="h-11 border-border dark:border-white/30 dark:bg-input dark:text-foreground"
                 />
               </div>
 
@@ -148,18 +149,18 @@ export default function ForgotPasswordPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                    Sending Reset Link...
+                    {t("auth.sendingResetLink")}
                   </>
                 ) : (
-                  "Send Reset Link"
+                  t("auth.sendResetLink")
                 )}
               </Button>
 
               <div className="text-center">
                 <p className="text-sm text-gray-600">
-                  Remember your password?{" "}
+                  {t("auth.rememberPasswordPrompt")}{" "}
                   <Link to="/login" className="text-blue-600 hover:text-blue-700 font-medium hover:underline">
-                    Sign in
+                    {t("auth.loginTitle")}
                   </Link>
                 </p>
               </div>

@@ -1,37 +1,39 @@
 import { MessageSquare, Users, Settings, Zap, BarChart3, HeadphonesIcon } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 const Features = () => {
+    const { t } = useTranslation();
     const features = [
         {
             icon: Users,
-            title: "Smart matching",
-            description: "Our advanced algorithm connects you with people who share your genuine interests and values."
+            titleKey: "home.features.smartMatchingTitle",
+            descKey: "home.features.smartMatchingDesc",
         },
         {
             icon: MessageSquare,
-            title: "Live guided discussions",
-            description: "Join structured conversations led by community experts to deepen your connections."
+            titleKey: "home.features.liveDiscussionsTitle",
+            descKey: "home.features.liveDiscussionsDesc",
         },
         {
             icon: Settings,
-            title: "Easy Customization",
-            description: "Personalize your profile and preferences to find exactly the right community for you."
+            titleKey: "home.features.easyCustomizationTitle",
+            descKey: "home.features.easyCustomizationDesc",
         },
         {
             icon: Zap,
-            title: "Seamless Messaging",
-            description: "Connect instantly with built-in messaging that keeps conversations flowing naturally."
+            titleKey: "home.features.seamlessMessagingTitle",
+            descKey: "home.features.seamlessMessagingDesc",
         },
         {
             icon: BarChart3,
-            title: "Best Dashboard",
-            description: "Track your connections, interests, and community engagement with comprehensive insights."
+            titleKey: "home.features.bestDashboardTitle",
+            descKey: "home.features.bestDashboardDesc",
         },
         {
             icon: HeadphonesIcon,
-            title: "Fast Support",
-            description: "Get help when you need it with our responsive customer support team."
+            titleKey: "home.features.fastSupportTitle",
+            descKey: "home.features.fastSupportDesc",
         }
     ];
 
@@ -61,7 +63,7 @@ const Features = () => {
                         transition={{ duration: 0.5 }}
                         className="text-3xl lg:text-4xl font-bold text-indigo-900 mb-4"
                     >
-                        Features for a better experience
+                        {t("home.featuresTitle")}
                     </motion.h2>
                     <motion.p
                         initial={{ opacity: 0, y: 20 }}
@@ -70,7 +72,7 @@ const Features = () => {
                         transition={{ duration: 0.5, delay: 0.1 }}
                         className="text-lg text-indigo-700 max-w-2xl mx-auto"
                     >
-                        Discover all the tools you need to build meaningful connections with people who share your passions.
+                        {t("home.featuresSubtitle")}
                     </motion.p>
                 </div>
 
@@ -93,10 +95,10 @@ const Features = () => {
                                     <IconComponent className="w-7 h-7 text-indigo-600" />
                                 </div>
                                 <h3 className="text-xl font-semibold text-indigo-900 mb-2">
-                                    {feature.title}
+                                    {t(feature.titleKey)}
                                 </h3>
                                 <p className="text-indigo-700">
-                                    {feature.description}
+                                    {t(feature.descKey)}
                                 </p>
                             </motion.div>
                         );

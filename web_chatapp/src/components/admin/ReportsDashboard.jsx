@@ -2,9 +2,11 @@ import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useGetAllReportsQuery, useUpdateReportStatusMutation } from "../../services/reportService";
-import { Eye, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Eye, CheckCircle, XCircle, Clock, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +19,7 @@ import {
 export function ReportsDashboard() {
   const [selectedReport, setSelectedReport] = useState(null);
   const [showReportDialog, setShowReportDialog] = useState(false);
+  const [adminMessage, setAdminMessage] = useState("");
   
   const { data: reportsData, isLoading, error } = useGetAllReportsQuery();
   const reports = reportsData?.recent_reports || [];
@@ -24,15 +27,21 @@ export function ReportsDashboard() {
 
   const handleViewReport = (report) => {
     setSelectedReport(report);
+    setAdminMessage("");
     setShowReportDialog(true);
   };
 
-  const handleUpdateStatus = async (reportId, status) => {
+  const handleUpdateStatus = async (reportId, status, adminMessageText) => {
     try {
-      await updateReportStatus({ reportId, status }).unwrap();
+      await updateReportStatus({
+        reportId,
+        status,
+        ...(adminMessageText != null && { admin_message: adminMessageText }),
+      }).unwrap();
       setShowReportDialog(false);
-    } catch (error) {
-      console.error('Failed to update report status:', error);
+      setAdminMessage("");
+    } catch (err) {
+      console.error("Failed to update report status:", err);
     }
   };
 
@@ -156,7 +165,7 @@ export function ReportsDashboard() {
 
       {/* Report Detail Dialog */}
       <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
-        <DialogContent className="sm:max-w-2xl bg-white dark:bg-card border-indigo-200 dark:border-border">
+        <DialogContent className="sm:max-w-2xl bg-white dark:bg-card border-indigo-200 dark:border-white/30">
           <DialogHeader>
             <DialogTitle className="text-indigo-900 dark:text-foreground">
               Report #{selectedReport?.id} Details
@@ -233,6 +242,24 @@ export function ReportsDashboard() {
                   {new Date(selectedReport.created_at).toLocaleString()}
                 </p>
               </div>
+
+              {selectedReport?.status === "pending" && (
+                <div className="space-y-2 pt-2 border-t border-indigo-200 dark:border-white/30">
+                  <Label className="text-gray-900 dark:text-foreground font-semibold">
+                    Message from admin (optional)
+                  </Label>
+                  <p className="text-xs text-gray-600 dark:text-muted-foreground">
+                    This will be sent to the reported user as: &quot;Your account has been reported. Message from the admin: [your message]&quot;
+                  </p>
+                  <Textarea
+                    placeholder="e.g. Please review our community guidelines."
+                    value={adminMessage}
+                    onChange={(e) => setAdminMessage(e.target.value)}
+                    className="min-h-[80px] border-indigo-200 dark:border-white/30 bg-white dark:bg-card text-gray-900 dark:text-foreground"
+                    maxLength={1000}
+                  />
+                </div>
+              )}
             </div>
           )}
           
@@ -244,20 +271,21 @@ export function ReportsDashboard() {
             >
               Close
             </Button>
-            {selectedReport?.status === 'pending' && (
+            {selectedReport?.status === "pending" && (
               <>
                 <Button
                   variant="outline"
-                  onClick={() => handleUpdateStatus(selectedReport.id, 'dismissed')}
+                  onClick={() => handleUpdateStatus(selectedReport.id, "dismissed")}
                   className="border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900"
                 >
                   Dismiss
                 </Button>
                 <Button
-                  onClick={() => handleUpdateStatus(selectedReport.id, 'resolved')}
-                  className="bg-green-600 text-white hover:bg-green-700"
+                  onClick={() => handleUpdateStatus(selectedReport.id, "resolved", adminMessage.trim() || null)}
+                  className="bg-amber-600 text-white hover:bg-amber-700"
                 >
-                  Resolve
+                  <AlertTriangle className="w-4 h-4 mr-2" />
+                  Send Warning
                 </Button>
               </>
             )}

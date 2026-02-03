@@ -1,5 +1,6 @@
 // File: src/components/chat/ChatMain.jsx
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,6 +11,7 @@ import { useWebSocket } from "../../contexts/WebSocketContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGetUserProfileQuery } from "../../services/userService";
 import { toast } from "react-toastify";
+import { getMoodEmoji, getFormattedMoodSentence, isMoodFresh } from "@/lib/mood";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +53,7 @@ const EMOJI_SETS = {
 };
 
 export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick }) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { data: profileData } = useGetUserProfileQuery(undefined, {
     skip: !user,
@@ -72,6 +75,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
   const recordedChunksRef = useRef([]);
   const fileInputRef = useRef(null);
   const [messageToDelete, setMessageToDelete] = useState(null);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   const {
     messages: wsMessages,
@@ -254,6 +258,10 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
   // Send message
   const handleSendMessage = async (e) => {
     e.preventDefault();
+    if (isBlocked) {
+      toast.error(t('chat.userBlocked'));
+      return;
+    }
     if ((!newMessage.trim() && attachedFiles.length === 0) || !selectedChat || !user) return;
 
     if (editingMessage) {
@@ -313,6 +321,18 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
       }
     } catch (err) {
       console.error("Send message error:", err);
+
+      const errMsg =
+        err?.data?.error ||
+        err?.data?.message ||
+        (typeof err?.error === "string" ? err.error : "");
+      if (err?.status === 403 && errMsg?.toLowerCase().includes("block")) {
+        setIsBlocked(true);
+        toast.error(t('chat.userBlocked'));
+      } else {
+        toast.error(errMsg || "Failed to send message");
+      }
+
       setAllMessages((prev) =>
         prev.map((msg) =>
           msg.clientId === clientId ? { ...msg, failed: true } : msg
@@ -323,6 +343,26 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
 
   const formatTime = (date) =>
     new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  const formatDayLabel = (date) => {
+    const d = new Date(date);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    const sameDay = (a, b) =>
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate();
+
+    if (sameDay(d, today)) return "Today";
+    if (sameDay(d, yesterday)) return "Yesterday";
+    return d.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   const [addReaction] = useAddReactionMutation();
 
@@ -523,39 +563,58 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
 
   if (!selectedChat)
     return (
-      <div className="flex-1 flex items-center justify-center bg-gradient-to-b from-[#E4E9FC] to-[#FFFFFF] dark:bg-background">
+      <div className="flex-1 flex items-center justify-center bg-gradient-to-b from-[#E4E9FC] to-[#FFFFFF] dark:from-background dark:to-background dark:bg-background">
         <div className="text-center">
-          <div className="w-24 h-24 bg-indigo-100 dark:bg-card rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-24 h-24 bg-indigo-100 dark:bg-card rounded-full flex items-center justify-center mx-auto mb-4 dark:border dark:border-white/20">
             <Send className="h-12 w-12 text-indigo-600 dark:text-foreground" />
           </div>
           <h3 className="text-xl font-semibold text-indigo-900 dark:text-foreground mb-2">
-            Welcome to Live Flow
+            {t("chat.emptyWelcomeTitle")}
           </h3>
           <p className="text-indigo-700 dark:text-muted-foreground max-w-md">
-            Select a chat from the sidebar to start messaging.
+            {t("chat.emptyWelcomeSubtitle")}
           </p>
         </div>
       </div>
     );
 
   if (isLoading)
-    return <div className="p-4 text-center text-indigo-600 dark:text-muted-foreground">Loading messages...</div>;
+    return <div className="p-4 text-center text-indigo-600 dark:text-muted-foreground">{t("chat.loadingMessages")}</div>;
   if (isError)
-    return <div className="p-4 text-center text-red-500 dark:text-red-400">Failed to load messages</div>;
+    return <div className="p-4 text-center text-red-500 dark:text-red-400">{t("chat.failedToLoadMessages")}</div>;
+
+  const otherMoodKey = selectedChatInfo?.mood ?? null;
+  const otherMoodUpdatedAt = selectedChatInfo?.moodUpdatedAt ?? selectedChatInfo?.mood_updated_at ?? null;
+  const visibleOtherMood = otherMoodKey && isMoodFresh(otherMoodUpdatedAt) ? otherMoodKey : null;
+  const otherMoodSentence = visibleOtherMood ? getFormattedMoodSentence(visibleOtherMood, t) : null;
+  const otherMoodEmoji = visibleOtherMood ? getMoodEmoji(visibleOtherMood) : null;
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-gradient-to-b from-[#E4E9FC] to-[#FFFFFF] dark:bg-background">
+    <div className="flex-1 flex flex-col h-full bg-gradient-to-b from-[#E4E9FC] to-[#FFFFFF] dark:from-background dark:to-background dark:bg-background">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-border bg-white dark:bg-card flex justify-between items-center">
+      <div className="p-4 border-b border-gray-200 dark:border-white/20 bg-white dark:bg-card flex justify-between items-center">
         <div className="flex items-center gap-3 cursor-pointer" onClick={onContactInfoClick}>
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={selectedChatInfo?.avatar || "/placeholder.svg"} />
-            <AvatarFallback className="bg-indigo-100 dark:bg-card text-indigo-700 dark:text-foreground">
-              {selectedChatInfo?.name?.charAt(0) || "U"}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={selectedChatInfo?.avatar || "/placeholder.svg"} />
+              <AvatarFallback className="bg-indigo-100 dark:bg-card text-indigo-700 dark:text-foreground">
+                {selectedChatInfo?.name?.charAt(0) || "U"}
+              </AvatarFallback>
+            </Avatar>
+            {otherMoodEmoji && (
+              <div
+                className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-white dark:bg-card border border-indigo-200 dark:border-white/20 flex items-center justify-center text-sm shadow-sm"
+                title={otherMoodSentence || undefined}
+              >
+                {otherMoodEmoji}
+              </div>
+            )}
+          </div>
           <div>
             <h3 className="font-semibold text-indigo-900 dark:text-foreground">{selectedChatInfo?.name}</h3>
+            {otherMoodSentence && (
+              <p className="text-sm text-gray-600 dark:text-muted-foreground">{otherMoodSentence}</p>
+            )}
             <p className={`text-sm ${connectionState === "connected" ? "text-green-500" : "text-red-500"}`}>
               {connectionState === "connected" ? "Online" : "Offline"}
             </p>
@@ -566,13 +625,26 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-transparent dark:bg-background">
         {allMessages.map((msg, index) => {
+          const currentDate = new Date(msg.timestamp);
+          const prevMsg = index > 0 ? allMessages[index - 1] : null;
+          const prevDate = prevMsg ? new Date(prevMsg.timestamp) : null;
+          const showDayHeader =
+            !prevDate || currentDate.toDateString() !== prevDate.toDateString();
+
           const isOwn = msg.sender?.id === user?.id;
           return (
-            <div
-              key={msg.id ?? msg.clientId ?? index} // unique key
-              className={`flex mb-4 group relative ${isOwn ? "justify-end" : "justify-start"}`}
-            >
-              <div className={`flex items-end max-w-xs lg:max-w-md ${isOwn ? "flex-row-reverse" : ""}`}>
+            <div key={msg.id ?? msg.clientId ?? index}>
+              {showDayHeader && (
+                <div className="flex justify-center my-2">
+                  <span className="px-3 py-1 rounded-full bg-white/70 dark:bg-card text-xs text-gray-600 dark:text-muted-foreground shadow-sm border border-gray-200/70 dark:border-white/20">
+                    {formatDayLabel(msg.timestamp)}
+                  </span>
+                </div>
+              )}
+              <div
+                className={`flex mb-4 group relative ${isOwn ? "justify-end" : "justify-start"}`}
+              >
+                <div className={`flex items-end max-w-xs lg:max-w-md ${isOwn ? "flex-row-reverse" : ""}`}>
                 <Avatar className="h-8 w-8 mx-2">
                   <AvatarImage
                     src={isOwn ? ownAvatarUrl : (selectedChatInfo?.avatar || "/placeholder.svg")}
@@ -584,10 +656,21 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                 </Avatar>
                 <div className={`flex flex-col ${isOwn ? "items-end mr-2" : "items-start ml-2"}`}>
                   <div
-                    className={`px-4 py-2 rounded-2xl break-words relative ${isOwn
-                      ? "bg-[#7F56DA] dark:bg-[#7F56DA] text-white rounded-br-none"
-                      : "bg-gradient-to-br from-[#F5F5F7] to-[#EBEBF2] dark:bg-card text-gray-700 dark:text-foreground rounded-bl-none shadow-[0_1px_2px_rgba(0,0,0,0.04)] border border-[#E8E8EE]/80"
-                      } ${msg.temp ? "opacity-70 italic" : ""}`}
+                    className={`px-4 py-2 rounded-2xl break-words relative ${
+                      isOwn
+                        ? "bg-[#7F56DA] dark:bg-[#7F56DA] text-white rounded-br-none"
+                        : [
+                            "bg-gradient-to-br from-[#F5F5F7] to-[#EBEBF2]",
+                            "text-gray-700",
+                            "rounded-bl-none",
+                            "shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+                            "border border-[#E8E8EE]/80",
+                            // Dark mode overrides – darker bubble, no bright gradient
+                            "dark:bg-[#111827] dark:bg-none",
+                            "dark:text-gray-100",
+                            "dark:border-[#374151]",
+                          ].join(" ")
+                    } ${msg.temp ? "opacity-70 italic" : ""}`}
                   >
                     {msg.reply_to && (
                       <div className={`mb-2 p-1.5 px-2 rounded-md text-xs border-l-2 ${isOwn ? "bg-white/10 border-white/60" : "bg-black/5 border-indigo-400"} transition-all`}>
@@ -709,7 +792,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                           <Smile className="h-3 w-3" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="bg-card dark:bg-card border border-gray-200 dark:border-border">
+                      <DropdownMenuContent align="start" className="bg-card dark:bg-card border border-gray-200 dark:border-white/20">
                         <div className="grid grid-cols-4 gap-1 p-2">
                           {REACTION_EMOJIS.map((emoji) => (
                             <Button
@@ -732,7 +815,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                           <MoreVertical className="h-3 w-3" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align={isOwn ? "end" : "start"} className="bg-card dark:bg-card border border-gray-200 dark:border-border">
+                      <DropdownMenuContent align={isOwn ? "end" : "start"} className="bg-card dark:bg-card border border-gray-200 dark:border-white/20">
                         <DropdownMenuItem onClick={() => handleReplyMessage(msg)} className="gap-2">
                           <Reply className="h-4 w-4" /> Reply
                         </DropdownMenuItem>
@@ -760,20 +843,29 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                   <p className="text-xs text-gray-500 dark:text-muted-foreground mt-1">{formatTime(msg.timestamp)}</p>
                 </div>
               </div>
+              </div>
             </div>
           );
         })}
+        {/* Blocked info as a final line in the chat view */}
+        {isBlocked && (
+          <div className="flex justify-center mt-2">
+            <span className="text-[11px] text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/30 px-3 py-1 rounded-full border border-red-200 dark:border-red-700">
+              {t('chat.blockedMessage')}
+            </span>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Selected Files Preview */}
       {attachedFiles.length > 0 && (
-        <div className="px-4 py-2 border-t border-[#E4E9FC]/60 dark:border-border bg-[#E4E9FC] dark:bg-card">
+        <div className="px-4 py-2 border-t border-[#E4E9FC]/60 dark:border-white/20 bg-[#E4E9FC] dark:bg-card">
           <div className="flex flex-wrap gap-2 items-center">
             {attachedFiles.map((file, index) => (
               <div
                 key={`${file.name}-${index}`}
-                className="flex items-center gap-2 bg-gray-100 dark:bg-muted px-2 py-1 rounded border border-gray-200 dark:border-border"
+                className="flex items-center gap-2 bg-gray-100 dark:bg-muted px-2 py-1 rounded border border-gray-200 dark:border-white/20"
               >
                 {file.type.startsWith('image/') && (
                   <img
@@ -833,8 +925,15 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
         </div>
       )}
 
+      {/* Block notice */}
+      {isBlocked && (
+        <div className="px-4 py-2 border-t border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-xs text-red-700 dark:text-red-200 text-center">
+          {t('chat.userBlocked')}
+        </div>
+      )}
+
       {/* Input */}
-      <form onSubmit={handleSendMessage} className="p-4 flex gap-2 items-center border-t border-[#E4E9FC]/60 dark:border-border bg-[#E4E9FC] dark:bg-card">
+      <form onSubmit={handleSendMessage} className="p-4 flex gap-2 items-center border-t border-[#E4E9FC]/60 dark:border-white/20 bg-[#E4E9FC] dark:bg-card">
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -842,11 +941,12 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
               variant="ghost"
               size="sm"
               className="text-[#7C84C8] dark:text-[#8A92D4] hover:bg-[#D0D4F0] dark:hover:bg-[#8A92D4]/20 rounded-full h-9 w-9 p-0"
+              disabled={isBlocked}
             >
               <Smile className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-0 mb-2 border-indigo-200 dark:border-border" align="start">
+          <PopoverContent className="w-80 p-0 mb-2 border-indigo-200 dark:border-white/20" align="start">
             <Tabs defaultValue="Smiles" className="w-full">
               <TabsList className="w-full justify-start rounded-none border-b bg-muted/50 dark:bg-muted/20">
                 {Object.keys(EMOJI_SETS).map(category => (
@@ -893,6 +993,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
           variant="ghost"
           size="sm"
           onClick={handleFileButtonClick}
+          disabled={isBlocked}
           className="text-[#7C84C8] dark:text-[#8A92D4] hover:bg-[#D0D4F0] dark:hover:bg-[#8A92D4]/20 rounded-full h-9 w-9 p-0"
           title="Attach files (images & videos)"
         >
@@ -907,6 +1008,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
           onClick={toggleRecording}
           className={`rounded-full h-9 w-9 p-0 ${isRecording ? "text-red-600" : "text-[#7C84C8] dark:text-[#8A92D4]"
             } hover:bg-[#D0D4F0] dark:hover:bg-[#8A92D4]/20`}
+          disabled={isBlocked}
         >
           {isRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
         </Button>
@@ -915,13 +1017,14 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
           type="text"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Type your message..."
+          placeholder={isBlocked ? "You cannot send messages in this chat" : "Type your message..."}
+          disabled={isBlocked}
           className="rounded-full border-0 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] focus-visible:ring-2 focus-visible:ring-[#8A92D4]/35 dark:focus-visible:ring-[#8A92D4]/40 flex-1 bg-white dark:bg-input text-gray-900 dark:text-foreground placeholder:text-[#A0A8C8] dark:placeholder:text-muted-foreground h-10 px-4"
         />
 
         <Button
           type="submit"
-          disabled={!newMessage.trim() && attachedFiles.length === 0}
+          disabled={isBlocked || (!newMessage.trim() && attachedFiles.length === 0)}
           className="rounded-full h-10 w-10 p-0 bg-[#8A92D4] dark:bg-[#8A92D4] text-white hover:bg-[#7C84C8] dark:hover:bg-[#7C84C8]"
         >
           <Send className="h-5 w-5" />
@@ -930,7 +1033,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
 
       {/* Report Dialog */}
       <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
-        <DialogContent className="sm:max-w-md bg-card dark:bg-card border-indigo-200 dark:border-border">
+        <DialogContent className="sm:max-w-md bg-card dark:bg-card border-indigo-200 dark:border-white/20">
           <DialogHeader>
             <DialogTitle className="text-indigo-900 dark:text-foreground">
               Report @{selectedChatInfo?.name || 'User'}
@@ -946,10 +1049,10 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                 REASON
               </Label>
               <Select value={reportReason} onValueChange={setReportReason}>
-                <SelectTrigger className="border-indigo-300 dark:border-border bg-muted dark:bg-input text-gray-900 dark:text-foreground">
+                <SelectTrigger className="border-indigo-300 dark:border-white/20 bg-muted dark:bg-input text-gray-900 dark:text-foreground">
                   <SelectValue placeholder="Select reason" />
                 </SelectTrigger>
-                <SelectContent className="bg-card dark:bg-card border-indigo-200 dark:border-border">
+                <SelectContent className="bg-card dark:bg-card border-indigo-200 dark:border-white/20">
                   <SelectItem value="inappropriate-content" className="text-gray-900 dark:text-foreground">Inappropriate Content</SelectItem>
                   <SelectItem value="harassment" className="text-gray-900 dark:text-foreground">Harassment</SelectItem>
                   <SelectItem value="spam" className="text-gray-900 dark:text-foreground">Spam</SelectItem>
@@ -968,7 +1071,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                 placeholder="Tell us more about the issue"
                 value={reportDescription}
                 onChange={(e) => setReportDescription(e.target.value)}
-                className="border-indigo-300 dark:border-border bg-muted dark:bg-input text-gray-900 dark:text-foreground placeholder:text-gray-500 dark:placeholder:text-muted-foreground"
+                className="border-indigo-300 dark:border-white/20 bg-muted dark:bg-input text-gray-900 dark:text-foreground placeholder:text-gray-500 dark:placeholder:text-muted-foreground"
                 rows={4}
               />
             </div>
@@ -978,7 +1081,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
             <Button
               variant="outline"
               onClick={() => setShowReportDialog(false)}
-              className="border-indigo-300 dark:border-border text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"
+              className="border-indigo-300 dark:border-white/20 text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"
             >
               Cancel
             </Button>

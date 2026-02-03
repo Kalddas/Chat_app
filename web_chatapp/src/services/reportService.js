@@ -42,12 +42,12 @@ export const reportApi = createApi({
       providesTags: ["Report"],
     }),
 
-    // ✅ Update report status (ADMIN only)
+    // ✅ Update report status (ADMIN only). When status is 'resolved', sends warning to reported user.
     updateReportStatus: builder.mutation({
-      query: ({ reportId, status }) => ({
-        url: `admin/reports/${reportId}/status`, // ✅ fixed path
+      query: ({ reportId, status, admin_message }) => ({
+        url: `admin/reports/${reportId}/status`,
         method: "PATCH",
-        body: { status },
+        body: { status, ...(admin_message != null && { admin_message }) },
       }),
       invalidatesTags: ["Report"],
     }),

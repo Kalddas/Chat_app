@@ -39,6 +39,22 @@ export const chatApi = createApi({
       invalidatesTags: ["Chat"],
 
     }),
+    blockUser: builder.mutation({
+      query: ({ userId }) => ({
+        url: "chat/block",
+        method: "POST",
+        body: { user_id: userId },
+      }),
+      invalidatesTags: ["Chat"],
+    }),
+    unblockUser: builder.mutation({
+      query: ({ userId }) => ({
+        url: "chat/unblock",
+        method: "POST",
+        body: { user_id: userId },
+      }),
+      invalidatesTags: ["Chat"],
+    }),
     sendMessage: builder.mutation({
       query: ({ conversationId, receiver_id, text, files, reply_to_id }) => {
         // If files are provided, send multipart/form-data
@@ -141,6 +157,8 @@ export const {
   useGetChatsQuery,
   useAcceptRequestMutation,
   useRejectRequestMutation,
+  useBlockUserMutation,
+  useUnblockUserMutation,
   useSendMessageMutation,
   useGetMessagesQuery,
   useEditMessageMutation,

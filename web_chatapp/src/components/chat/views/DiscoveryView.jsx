@@ -101,7 +101,7 @@ export function DiscoveryView() {
           placeholder="Search by name or email..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 border-indigo-300 dark:border-border dark:bg-input dark:text-foreground dark:placeholder:text-muted-foreground focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500 dark:focus:ring-primary"
+          className="pl-10 border-indigo-300 dark:border-white/30 dark:bg-input dark:text-foreground dark:placeholder:text-muted-foreground focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500 dark:focus:ring-primary"
         />
       </div>
 
@@ -118,10 +118,10 @@ export function DiscoveryView() {
             const isRequestSent = sentRequests.includes(recommendedUser.id)
 
             return (
-              <Card key={recommendedUser.id} className="hover:shadow-md transition-shadow border-indigo-200 dark:border-border dark:bg-background">
+              <Card key={recommendedUser.id} className="hover:shadow-md transition-shadow border-indigo-200 dark:border-white/30 dark:bg-background">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3 mb-3">
-                    <Avatar className="h-12 w-12 border-2 border-indigo-100 dark:border-border">
+                    <Avatar className="h-12 w-12 border-2 border-indigo-100 dark:border-white/30">
                       <AvatarImage src={recommendedUser.avatar} alt={recommendedUser.name} />
                       <AvatarFallback className="bg-indigo-100 dark:bg-card text-indigo-700 dark:text-foreground">
                         {recommendedUser.name.split(' ').map(n => n[0]).join('')}
@@ -141,7 +141,7 @@ export function DiscoveryView() {
                       variant="outline"
                       onClick={() => handleSendRequest(recommendedUser.id)}
                       disabled={isRequestSent || isSendingRequest}
-                      className="flex-1 border-indigo-300 dark:border-border text-indigo-700 dark:text-foreground hover:bg-indigo-50 dark:hover:bg-accent disabled:opacity-50"
+                      className="flex-1 border-indigo-300 dark:border-white/30 text-indigo-700 dark:text-foreground hover:bg-indigo-50 dark:hover:bg-accent disabled:opacity-50"
                     >
                       <UserPlus className="h-4 w-4 mr-1" />
                       {isSendingRequest ? "Sending..." : isRequestSent ? "Request Sent" : "Send Request"}

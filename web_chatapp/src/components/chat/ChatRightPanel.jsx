@@ -5,18 +5,21 @@ import { DiscoveryView } from "./views/DiscoveryView"
 import { RequestsView } from "./views/RequestsView"
 import { SettingsView } from "./views/SettingsView"
 import { ContactInfoView } from "./views/ContactInfoView"
+import { useTranslation } from "react-i18next"
 
 export function ChatRightPanel({ view, selectedChat, selectedChatInfo, onClose }) {
+  const { t } = useTranslation()
+
   const getTitle = () => {
     switch (view) {
       case "discovery":
-        return "Discovery"
+        return t("discover.title")
       case "requests":
-        return "Requests"
+        return t("requests.title")
       case "settings":
-        return "Settings"
+        return t("settings.title")
       case "contact-info":
-        return "Contact Info"
+        return t("profile.contactInfo")
       default:
         return ""
     }
@@ -25,7 +28,7 @@ export function ChatRightPanel({ view, selectedChat, selectedChatInfo, onClose }
   return (
     <div className="h-full flex flex-col bg-background dark:bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-indigo-200 dark:border-border bg-card dark:bg-card">
+      <div className="flex items-center justify-between p-4 border-b border-indigo-200 dark:border-white/20 bg-card dark:bg-card">
         <h2 className="text-lg font-semibold text-indigo-900 dark:text-foreground">{getTitle()}</h2>
         <Button
           variant="ghost"

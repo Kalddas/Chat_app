@@ -90,7 +90,7 @@ export default function SuspendedAccountDialog({ open, onOpenChange, token }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl bg-white dark:bg-card dark:border-border max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl bg-white dark:bg-card dark:border-white/20 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-center mb-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
@@ -117,7 +117,7 @@ export default function SuspendedAccountDialog({ open, onOpenChange, token }) {
           </Alert>
 
           {/* Message Form */}
-          <div className="bg-indigo-50 dark:bg-card border border-indigo-200 dark:border-border rounded-lg p-4">
+          <div className="bg-indigo-50 dark:bg-card border border-indigo-200 dark:border-white/20 rounded-lg p-4">
             <h3 className="font-semibold text-indigo-900 dark:text-foreground mb-2 flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
               Send Message to Admin
@@ -141,7 +141,7 @@ export default function SuspendedAccountDialog({ open, onOpenChange, token }) {
                   minLength={1}
                   maxLength={5000}
                   rows={6}
-                  className="border-indigo-300 dark:border-border dark:bg-card dark:text-foreground focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500"
+                  className="border-indigo-300 dark:border-white/20 dark:bg-card dark:text-foreground focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500"
                 />
                 <p className="text-xs text-indigo-700 dark:text-muted-foreground">
                   Maximum 5000 characters. ({messageText.length}/5000)
@@ -170,7 +170,7 @@ export default function SuspendedAccountDialog({ open, onOpenChange, token }) {
 
           {/* Previous Messages Section */}
           {userMessages.length > 0 && (
-            <div className="bg-gray-50 dark:bg-card border border-gray-200 dark:border-border rounded-lg p-4">
+            <div className="bg-gray-50 dark:bg-card border border-gray-200 dark:border-white/20 rounded-lg p-4">
               <h3 className="font-semibold text-gray-900 dark:text-foreground mb-3 flex items-center gap-2">
                 <Mail className="h-5 w-5" />
                 Your Messages & Responses
@@ -179,7 +179,7 @@ export default function SuspendedAccountDialog({ open, onOpenChange, token }) {
                 {userMessages.map((msg) => (
                   <div key={msg.id} className="space-y-2">
                     {/* User's Message */}
-                    <div className="bg-white dark:bg-background border border-gray-200 dark:border-border rounded p-3">
+                    <div className="bg-white dark:bg-background border border-gray-200 dark:border-white/20 rounded p-3">
                       <div className="flex items-center gap-2 mb-2">
                         <MessageSquare className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                         <p className="text-xs font-semibold text-gray-700 dark:text-foreground">
@@ -230,7 +230,7 @@ export default function SuspendedAccountDialog({ open, onOpenChange, token }) {
             </div>
           )}
 
-          <div className="pt-4 border-t dark:border-border">
+          <div className="pt-4 border-t dark:border-white/20">
             <div className="text-center space-y-2">
               <p className="text-sm text-gray-600 dark:text-muted-foreground">
                 While your account is suspended, you can:

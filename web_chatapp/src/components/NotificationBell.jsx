@@ -6,7 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Bell, MessageSquare, UserPlus, Trash2, X } from "lucide-react"
+import { Bell, MessageSquare, UserPlus, Trash2, X, AlertTriangle } from "lucide-react"
 import axios from "axios"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
@@ -135,6 +135,8 @@ export function NotificationBell({ userId, isAdmin = false }) {
         return <UserPlus className="h-4 w-4 text-green-600 dark:text-green-400" />
       case 'message_deleted':
         return <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
+      case 'account_reported_warning':
+        return <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
       default:
         return <Bell className="h-4 w-4" />
     }
@@ -150,6 +152,8 @@ export function NotificationBell({ userId, isAdmin = false }) {
         return 'New Chat Request'
       case 'message_deleted':
         return 'Message Deleted'
+      case 'account_reported_warning':
+        return 'Your account has been reported'
       default:
         return 'Notification'
     }
@@ -167,9 +171,14 @@ export function NotificationBell({ userId, isAdmin = false }) {
         return data?.sender_name ? `${data.sender_name} wants to chat with you` : 'You have a new chat request'
       case 'message_deleted':
         return data?.message_preview ? `"${data.message_preview}" was deleted` : 'A message was deleted'
+      case 'account_reported_warning':
+        return data?.message || 'Your account has been reported. Please ensure your activity complies with our community guidelines.'
       default:
         if (data?.message_preview) {
           return data.message_preview
+        }
+        if (data?.message) {
+          return data.message
         }
         if (data?.user_name) {
           return `${data.user_name} sent you a message`
@@ -201,7 +210,7 @@ export function NotificationBell({ userId, isAdmin = false }) {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
-        <div className="flex items-center justify-between p-4 border-b border-indigo-200 dark:border-border">
+        <div className="flex items-center justify-between p-4 border-b border-indigo-200 dark:border-white/30">
           <h3 className="font-semibold text-indigo-900 dark:text-foreground">Notifications</h3>
           {unreadCount > 0 && (
             <Button

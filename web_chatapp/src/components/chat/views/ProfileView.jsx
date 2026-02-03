@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from "react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,12 +14,15 @@ import {
   useUpdateProfileMutation,
   useDeleteTagsMutation,
   useGetAvailableTagsQuery,
+  useUpdateMoodMutation,
 } from "../../../services/userService"
 import { useAuth } from "@/contexts/AuthContext"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
+import { MOOD_OPTIONS, getMoodEmoji, getFormattedMoodSentence, isMoodFresh } from "@/lib/mood"
 
 export function ProfileView({ isOpen, onClose }) {
+  const { t } = useTranslation()
   const { updateUser } = useAuth()
   const { data: profileData, isLoading: profileLoading, error: profileError, refetch: refetchProfile } =
     useGetUserProfileQuery(undefined, {
@@ -32,10 +36,17 @@ export function ProfileView({ isOpen, onClose }) {
   const { data: tagsData, isLoading: tagsLoading, refetch: refetchTags } =
     useGetAvailableTagsQuery()
   const [updateProfile, { isLoading: updating }] = useUpdateProfileMutation()
+  const [updateMood, { isLoading: updatingMood }] = useUpdateMoodMutation()
   const [deleteTags, { isLoading: deletingTags }] = useDeleteTagsMutation()
 
   const profile = profileData?.profile
   const selectedTags = profileData?.selected_tags || []
+
+  const moodKey = profile?.mood
+  const moodUpdatedAt = profile?.mood_updated_at
+  const visibleMoodKey = moodKey && isMoodFresh(moodUpdatedAt) ? moodKey : null
+  const visibleMoodSentence = visibleMoodKey ? getFormattedMoodSentence(visibleMoodKey, t) : null
+  const visibleMoodEmoji = visibleMoodKey ? getMoodEmoji(visibleMoodKey) : null
 
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
@@ -291,6 +302,22 @@ export function ProfileView({ isOpen, onClose }) {
     }
   };
 
+  const handleSetMood = async (mood) => {
+    try {
+      setError("")
+      setSuccess("")
+      await updateMood({ mood }).unwrap()
+      await refetchProfile()
+      setSuccess("Mood updated!")
+    } catch (err) {
+      const msg =
+        err?.data?.message ||
+        (err?.data?.errors?.mood && Array.isArray(err.data.errors.mood) ? err.data.errors.mood[0] : null) ||
+        "Failed to update mood"
+      setError(msg)
+    }
+  }
+
 
 
   const handleCancel = () => {
@@ -343,9 +370,9 @@ export function ProfileView({ isOpen, onClose }) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-background dark:bg-background">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-indigo-900 dark:text-foreground">Profile Settings</DialogTitle>
+          <DialogTitle className="text-2xl font-bold text-indigo-900 dark:text-foreground">{t('profile.settings')}</DialogTitle>
           <DialogDescription className="dark:text-muted-foreground">
-            Update your personal information and profile picture. Changes are saved to your account.
+            {t('profile.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -363,26 +390,26 @@ export function ProfileView({ isOpen, onClose }) {
             </Alert>
           )}
 
-          <Card className="border-indigo-200 dark:border-border dark:border-opacity-100 dark:bg-card">
+          <Card className="border-indigo-200 dark:border-white/30 dark:border-opacity-100 dark:bg-card">
             <CardHeader>
               <CardTitle className="text-lg flex items-center justify-between text-indigo-900 dark:text-foreground">
                 {!isEditing ? (
                   <Button onClick={() => setIsEditing(true)} className="gap-2 bg-primary hover:bg-primary/90">
-                    <Edit className="h-4 w-4" /> Edit
+                    <Edit className="h-4 w-4" /> {t('common.edit')}
                   </Button>
                 ) : (
                   <div className="flex gap-2">
                     <Button onClick={handleSave} disabled={updating} className="gap-2 bg-primary hover:bg-primary/90">
                       {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                      Save
+                      {t('common.save')}
                     </Button>
                     <Button
                       variant="outline"
                       onClick={handleCancel}
                       disabled={updating}
-                      className="gap-2 border-indigo-300 dark:border-border dark:border-opacity-100 text-indigo-700 dark:text-foreground hover:bg-indigo-50 dark:hover:bg-accent"
+                      className="gap-2 border-indigo-300 dark:border-white/30 dark:border-opacity-100 text-indigo-700 dark:text-foreground hover:bg-indigo-50 dark:hover:bg-accent"
                     >
-                      <X className="h-4 w-4" /> Cancel
+                      <X className="h-4 w-4" /> {t('common.cancel')}
                     </Button>
                   </div>
                 )}
@@ -391,15 +418,15 @@ export function ProfileView({ isOpen, onClose }) {
             <CardContent className="space-y-6">
               {/* Profile Picture Section */}
               <div className="space-y-4">
-                <div className="pb-2 border-b border-indigo-200 dark:border-border dark:border-opacity-100">
-                  <Label className="text-base font-semibold text-indigo-900 dark:text-foreground">Profile Picture</Label>
+                <div className="pb-2 border-b border-indigo-200 dark:border-white/30 dark:border-opacity-100">
+                  <Label className="text-base font-semibold text-indigo-900 dark:text-foreground">{t('profile.profilePicture')}</Label>
                   <p className="text-xs text-indigo-600 dark:text-muted-foreground mt-1">
-                    Accepts JPG, PNG, GIF, WebP, BMP, SVG, ICO (Max 5MB)
+                    {t('profile.profilePictureDesc')}
                   </p>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="relative">
-                    <Avatar className="h-20 w-20 border-2 border-indigo-100 dark:border-border dark:border-opacity-100">
+                    <Avatar className="h-20 w-20 border-2 border-indigo-100 dark:border-white/30 dark:border-opacity-100">
                       <AvatarImage
                         src={(() => {
                           // 1. Preview (newly selected file)
@@ -428,6 +455,14 @@ export function ProfileView({ isOpen, onClose }) {
                         {profile?.first_name?.charAt(0) || "U"}
                       </AvatarFallback>
                     </Avatar>
+                    {visibleMoodEmoji && (
+                      <div
+                        className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-white dark:bg-card border border-indigo-200 dark:border-white/30 flex items-center justify-center text-base shadow-sm"
+                        title={visibleMoodSentence || undefined}
+                      >
+                        {visibleMoodEmoji}
+                      </div>
+                    )}
                     {/* Camera Icon Button - Always visible */}
                     <button
                       type="button"
@@ -666,41 +701,81 @@ export function ProfileView({ isOpen, onClose }) {
                 </div>
               </div>
 
-              <Separator className="bg-indigo-200 dark:bg-border dark:opacity-100" />
+              <Separator className="bg-indigo-200 dark:bg-white/30 dark:opacity-100" />
+
+              {/* Mood Section */}
+              <div className="space-y-4">
+                <div className="pb-2 border-b border-indigo-200 dark:border-white/30 dark:border-opacity-100">
+                  <Label className="text-base font-semibold text-indigo-900 dark:text-foreground">{t('mood.title')}</Label>
+                  <p className="text-xs text-indigo-600 dark:text-muted-foreground mt-1">
+                    {visibleMoodSentence || t('mood.noMood')}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-5 gap-2">
+                  {MOOD_OPTIONS.map((opt) => {
+                    const active = opt.key === visibleMoodKey
+                    return (
+                      <Button
+                        key={opt.key}
+                        type="button"
+                        variant={active ? "default" : "outline"}
+                        disabled={updatingMood}
+                        onClick={() => handleSetMood(opt.key)}
+                        className={
+                          active
+                            ? "bg-primary hover:bg-primary/90 text-white h-auto py-3 flex flex-col gap-1"
+                            : "border-indigo-200 dark:border-white/30 text-indigo-800 dark:text-foreground hover:bg-indigo-50 dark:hover:bg-accent h-auto py-3 flex flex-col gap-1"
+                        }
+                      >
+                        <span className="text-2xl leading-none">{opt.emoji}</span>
+                        <span className="text-xs capitalize leading-none">{t(opt.labelKey)}</span>
+                      </Button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <Separator className="bg-indigo-200 dark:bg-white/30 dark:opacity-100" />
 
               {/* Personal Information Section */}
               <div className="space-y-4">
-                <div className="pb-2 border-b border-indigo-200 dark:border-border dark:border-opacity-100">
-                  <Label className="text-base font-semibold text-indigo-900 dark:text-foreground">Personal Information</Label>
+                <div className="pb-2 border-b border-indigo-200 dark:border-white/30 dark:border-opacity-100">
+                  <Label className="text-base font-semibold text-indigo-900 dark:text-foreground">{t('profile.personalInfo')}</Label>
                 </div>
 
                 {/* Form Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {["first_name", "last_name", "user_name", "phone"].map((field) => (
-                    <div key={field} className="space-y-2">
-                      <Label htmlFor={field} className="text-indigo-900 dark:text-foreground capitalize">{field.replace("_", " ")}</Label>
+                  {[
+                    { key: "first_name", labelKey: "profile.firstName" },
+                    { key: "last_name", labelKey: "profile.lastName" },
+                    { key: "user_name", labelKey: "profile.username" },
+                    { key: "phone", labelKey: "profile.phone" }
+                  ].map(({ key, labelKey }) => (
+                    <div key={key} className="space-y-2">
+                      <Label htmlFor={key} className="text-indigo-900 dark:text-foreground">{t(labelKey)}</Label>
                       {isEditing ? (
                         <Input
-                          id={field}
-                          value={formData[field]}
-                          onChange={(e) => setFormData({ ...formData, [field]: e.target.value })}
-                          placeholder={`Enter your ${field.replace("_", " ")}`}
-                          className="border-indigo-300 dark:border-border dark:border-opacity-100 dark:bg-card dark:text-foreground focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500"
+                          id={key}
+                          value={formData[key]}
+                          onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
+                          placeholder={t(labelKey)}
+                          className="border-indigo-300 dark:border-white/30 dark:border-opacity-100 dark:bg-card dark:text-foreground focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500"
                         />
                       ) : (
-                        <p className="text-sm text-indigo-600 dark:text-muted-foreground py-2 px-3 bg-indigo-50 dark:bg-card rounded-md border border-indigo-200 dark:border-border dark:border-opacity-100">{formData[field] || "Not provided"}</p>
+                        <p className="text-sm text-indigo-600 dark:text-muted-foreground py-2 px-3 bg-indigo-50 dark:bg-card rounded-md border border-indigo-200 dark:border-white/30 dark:border-opacity-100">{formData[key] || t('common.notProvided')}</p>
                       )}
                     </div>
                   ))}
                 </div>
               </div>
 
-              <Separator className="bg-indigo-200 dark:bg-border dark:opacity-100" />
+              <Separator className="bg-indigo-200 dark:bg-white/30 dark:opacity-100" />
 
               {/* Bio Section */}
               <div className="space-y-4">
-                <div className="pb-2 border-b border-indigo-200 dark:border-border dark:border-opacity-100">
-                  <Label className="text-base font-semibold text-indigo-900 dark:text-foreground">Bio</Label>
+                <div className="pb-2 border-b border-indigo-200 dark:border-white/30 dark:border-opacity-100">
+                  <Label className="text-base font-semibold text-indigo-900 dark:text-foreground">{t('profile.bio')}</Label>
                 </div>
                 <div className="space-y-2">
                   {isEditing ? (
@@ -709,21 +784,21 @@ export function ProfileView({ isOpen, onClose }) {
                       value={formData.bio}
                       onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                       rows={3}
-                      placeholder="Tell us about yourself..."
-                      className="border-indigo-300 dark:border-border dark:border-opacity-100 dark:bg-card dark:text-foreground focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500"
+                      placeholder={t('profile.bioPlaceholder')}
+                      className="border-indigo-300 dark:border-white/30 dark:border-opacity-100 dark:bg-card dark:text-foreground focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500"
                     />
                   ) : (
-                    <p className="text-sm text-indigo-600 dark:text-muted-foreground py-2 px-3 bg-indigo-50 dark:bg-card rounded-md min-h-[60px] border border-indigo-200 dark:border-border dark:border-opacity-100">{formData.bio || "No bio provided"}</p>
+                    <p className="text-sm text-indigo-600 dark:text-muted-foreground py-2 px-3 bg-indigo-50 dark:bg-card rounded-md min-h-[60px] border border-indigo-200 dark:border-white/30 dark:border-opacity-100">{formData.bio || t('profile.noBio')}</p>
                   )}
                 </div>
               </div>
 
-              <Separator className="bg-indigo-200 dark:bg-border dark:opacity-100" />
+              <Separator className="bg-indigo-200 dark:bg-white/30 dark:opacity-100" />
 
               {/* Tags Section */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between pb-2 border-b border-indigo-200 dark:border-border/80">
-                  <Label className="text-base font-semibold text-indigo-900 dark:text-foreground">Interests & Tags</Label>
+                <div className="flex items-center justify-between pb-2 border-b border-indigo-200 dark:border-white/30/80">
+                  <Label className="text-base font-semibold text-indigo-900 dark:text-foreground">{t('profile.interests')}</Label>
                   {isEditing && selectedInterests.length > 0 && (
                     <Button
                       variant="outline"
@@ -733,15 +808,15 @@ export function ProfileView({ isOpen, onClose }) {
                       className="gap-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 border-red-300 dark:border-red-800"
                     >
                       {deletingTags ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                      Remove All
+                      {t('profile.removeAll')}
                     </Button>
                   )}
                 </div>
 
                 {isEditing ? (
-                  <div className="space-y-2 border border-indigo-200 dark:border-border dark:border-opacity-100 rounded-md p-4 bg-indigo-50/50 dark:bg-card/50">
+                  <div className="space-y-2 border border-indigo-200 dark:border-white/30 dark:border-opacity-100 rounded-md p-4 bg-indigo-50/50 dark:bg-card/50">
                     {organizedTags.map((tag) => (
-                      <div key={tag.id} className="flex items-center py-2 px-3 rounded hover:bg-indigo-100 dark:hover:bg-accent transition-colors border-b border-indigo-200/50 dark:border-border dark:border-opacity-100 last:border-b-0">
+                      <div key={tag.id} className="flex items-center py-2 px-3 rounded hover:bg-indigo-100 dark:hover:bg-accent transition-colors border-b border-indigo-200/50 dark:border-white/30 dark:border-opacity-100 last:border-b-0">
                         <Checkbox
                           id={`tag-${tag.id}`}
                           checked={selectedInterests.includes(tag.id)}
@@ -749,21 +824,21 @@ export function ProfileView({ isOpen, onClose }) {
                             if (checked) setSelectedInterests((prev) => [...prev, tag.id])
                             else setSelectedInterests((prev) => prev.filter((i) => i !== tag.id))
                           }}
-                          className="text-indigo-600 border-indigo-300 dark:border-border/80 data-[state=checked]:bg-primary"
+                          className="text-indigo-600 border-indigo-300 dark:border-white/30/80 data-[state=checked]:bg-primary"
                         />
-                        <Label htmlFor={`tag-${tag.id}`} className="text-sm font-normal cursor-pointer flex-1 text-indigo-900 dark:text-foreground ml-2">{tag.name}</Label>
+                        <Label htmlFor={`tag-${tag.id}`} className="text-sm font-normal cursor-pointer flex-1 text-indigo-900 dark:text-foreground ml-2">{t(`tags.${tag.name.toLowerCase()}`, tag.name)}</Label>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="flex flex-wrap gap-2 p-2 border border-indigo-200 dark:border-border dark:border-opacity-100 rounded-md bg-indigo-50/50 dark:bg-card/50 min-h-[60px] items-start">
+                  <div className="flex flex-wrap gap-2 p-2 border border-indigo-200 dark:border-white/30 dark:border-opacity-100 rounded-md bg-indigo-50/50 dark:bg-card/50 min-h-[60px] items-start">
                     {selectedTags.length > 0
                       ? selectedTags.map((tag) => (
-                        <p key={tag.id} className="px-3 py-1 bg-indigo-100 dark:bg-card dark:text-foreground text-indigo-700 dark:border dark:border-border dark:border-opacity-100 rounded-full text-sm">
-                          {tag.name}
+                        <p key={tag.id} className="px-3 py-1 bg-indigo-100 dark:bg-card dark:text-foreground text-indigo-700 dark:border dark:border-white/30 dark:border-opacity-100 rounded-full text-sm">
+                          {t(`tags.${tag.name.toLowerCase()}`, tag.name)}
                         </p>
                       ))
-                      : <span className="text-indigo-600 dark:text-muted-foreground py-2 px-3">No interests selected</span>}
+                      : <span className="text-indigo-600 dark:text-muted-foreground py-2 px-3">{t('profile.noInterests')}</span>}
                   </div>
                 )}
               </div>

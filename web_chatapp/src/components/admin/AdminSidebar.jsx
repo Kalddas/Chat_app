@@ -21,7 +21,6 @@ import {
 import { useGetUserProfileQuery } from "../../services/userService"
 import { useLogoutMutation } from "../../services/authService"
 import { useNavigate } from "react-router-dom"
-import { NotificationBell } from "../NotificationBell"
 
 export function AdminSidebar({ currentView, onViewChange }) {
   const { data: profile, isLoading, error } = useGetUserProfileQuery()
@@ -58,7 +57,7 @@ export function AdminSidebar({ currentView, onViewChange }) {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-indigo-200 dark:border-border">
+      <div className="p-4 border-b border-indigo-200 dark:border-white/30">
         <div className="flex items-center gap-2 mb-4">
           <Shield className="h-6 w-6 text-indigo-600 dark:text-primary" />
           <h1 className="text-lg font-bold text-indigo-900 dark:text-foreground">Admin Panel</h1>
@@ -66,7 +65,7 @@ export function AdminSidebar({ currentView, onViewChange }) {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8 bg-indigo-100 dark:bg-card border-2 border-indigo-200 dark:border-border" key={profile?.profile?.profile_picture_url || 'no-image'}>
+            <Avatar className="h-8 w-8 bg-indigo-100 dark:bg-card border-2 border-indigo-200 dark:border-white/30" key={profile?.profile?.profile_picture_url || 'no-image'}>
               <AvatarImage 
                 src={
                   profile?.profile?.profile_picture_url 
@@ -94,14 +93,13 @@ export function AdminSidebar({ currentView, onViewChange }) {
             )}
           </div>
           <div className="flex items-center gap-1">
-            <NotificationBell userId={user?.id} isAdmin={true} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-indigo-600 dark:text-foreground hover:text-indigo-800 dark:hover:text-foreground hover:bg-indigo-50 dark:hover:bg-accent">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-white dark:bg-card border-indigo-200 dark:border-border">
+              <DropdownMenuContent align="end" className="bg-white dark:bg-card border-indigo-200 dark:border-white/30">
                 <DropdownMenuItem
                   onClick={() => setShowProfileDialog(true)}
                   className="text-indigo-900 dark:text-foreground focus:bg-indigo-50 dark:focus:bg-accent focus:text-indigo-900 dark:focus:text-foreground"
@@ -116,7 +114,7 @@ export function AdminSidebar({ currentView, onViewChange }) {
                   <Settings className="mr-2 h-4 w-4 text-indigo-600 dark:text-primary" />
                   Settings
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-indigo-200 dark:bg-border" />
+                <DropdownMenuSeparator className="bg-indigo-200 dark:bg-white/30" />
                 <DropdownMenuItem
                   onClick={() => setShowLogoutDialog(true)}
                   className="text-red-600 dark:text-red-400 focus:bg-red-50 dark:focus:bg-red-900/30 focus:text-red-700 dark:focus:text-red-300"
@@ -149,7 +147,7 @@ export function AdminSidebar({ currentView, onViewChange }) {
 
       {/* Logout Dialog */}
       <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-card border-indigo-200 dark:border-border">
+        <DialogContent className="sm:max-w-md bg-white dark:bg-card border-indigo-200 dark:border-white/30">
           <DialogHeader>
             <DialogTitle className="text-indigo-900 dark:text-foreground">Confirm Logout</DialogTitle>
             <DialogDescription className="text-indigo-600 dark:text-muted-foreground">
@@ -161,7 +159,7 @@ export function AdminSidebar({ currentView, onViewChange }) {
               variant="outline"
               onClick={() => setShowLogoutDialog(false)}
               disabled={isLoggingOut}
-              className="border-indigo-300 dark:border-border text-indigo-700 dark:text-foreground hover:bg-indigo-50 dark:hover:bg-accent"
+              className="border-indigo-300 dark:border-white/30 text-indigo-700 dark:text-foreground hover:bg-indigo-50 dark:hover:bg-accent"
             >
               Cancel
             </Button>
@@ -188,7 +186,7 @@ export function AdminSidebar({ currentView, onViewChange }) {
 
       {/* Profile Dialog */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-card border-indigo-200 dark:border-border">
+        <DialogContent className="sm:max-w-md bg-white dark:bg-card border-indigo-200 dark:border-white/30">
           <DialogHeader>
             <DialogTitle className="text-indigo-900 dark:text-foreground">Profile</DialogTitle>
             <DialogDescription className="text-indigo-600 dark:text-muted-foreground">
@@ -197,7 +195,7 @@ export function AdminSidebar({ currentView, onViewChange }) {
           </DialogHeader>
 
           <div className="flex flex-col items-center gap-4 p-4">
-            <Avatar className="h-16 w-16 border-2 border-indigo-200 dark:border-border" key={profile?.profile?.profile_picture_url || 'no-image'}>
+            <Avatar className="h-16 w-16 border-2 border-indigo-200 dark:border-white/30" key={profile?.profile?.profile_picture_url || 'no-image'}>
               <AvatarImage 
                 src={
                   profile?.profile?.profile_picture_url 

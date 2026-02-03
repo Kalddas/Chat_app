@@ -83,7 +83,7 @@ function OTPForm() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <Card className="bg-white dark:bg-card dark:border-border">
+          <Card className="bg-white dark:bg-card dark:border-white/20">
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 dark:bg-primary/20">
                 <CheckCircle className="h-6 w-6 text-accent dark:text-primary" />
@@ -115,7 +115,7 @@ function OTPForm() {
           <p className="text-muted-foreground mt-2">Enter the 6-digit code sent to {email}</p>
         </div>
 
-        <Card className="bg-white dark:bg-card dark:border-border">
+        <Card className="bg-white dark:bg-card dark:border-white/20">
           <CardHeader>
             <CardTitle className="dark:text-foreground">Enter Verification Code</CardTitle>
             <CardDescription className="dark:text-muted-foreground">We've sent a 6-digit code to your email address</CardDescription>
@@ -133,7 +133,7 @@ function OTPForm() {
                     value={digit}
                     onChange={(e) => handleOtpChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
-                    className="w-12 h-12 text-center text-lg font-semibold border-2 border-gray-300 dark:border-border dark:bg-card dark:text-foreground focus:border-blue-500 dark:focus:border-primary focus:ring-2 focus:ring-blue-200 dark:focus:ring-primary/50 rounded-md shadow-sm transition-colors" />
+                    className="w-12 h-12 text-center text-lg font-semibold border-2 border-gray-300 dark:border-white/20 dark:bg-card dark:text-foreground focus:border-blue-500 dark:focus:border-primary focus:ring-2 focus:ring-blue-200 dark:focus:ring-primary/50 rounded-md shadow-sm transition-colors" />
                 ))}
 
               </div>

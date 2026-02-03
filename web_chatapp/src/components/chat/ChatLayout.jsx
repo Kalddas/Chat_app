@@ -1,12 +1,14 @@
 // File: src/components/chat/ChatLayout.jsx
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ChatSidebar } from "./ChatSidebar"
 import { ChatMain } from "./ChatMain"
 import { ChatRightPanel } from "./ChatRightPanel"
 import { ProfileView } from "./views/ProfileView"
+import { MoodPromptModal } from "./MoodPromptModal"
 import { useAuth } from "@/contexts/AuthContext"
 import { ChatsProvider } from "../../contexts/ChatsContext"
-import { useEffect } from "react"
+import { useGetUserProfileQuery } from "../../services/userService"
+import { shouldShowMoodPrompt, setMoodPromptShown } from "@/lib/mood"
 import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -22,7 +24,20 @@ export function ChatLayout() {
   const [rightPanelView, setRightPanelView] = useState("none") // Right panel view
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false) // Profile modal
   const [isSidebarOpen, setIsSidebarOpen] = useState(false) // Mobile sidebar state
+  const [showMoodPrompt, setShowMoodPrompt] = useState(false)
   const { user } = useAuth()
+  const { data: profileData, isSuccess: profileLoaded, refetch: refetchProfile } = useGetUserProfileQuery(undefined, {
+    skip: !user?.id,
+  })
+  const profile = profileData?.profile
+
+  // Show mood prompt after login / every 24h based on last-shown timestamp
+  useEffect(() => {
+    if (!user?.id || !profileLoaded || !profile) return
+    if (shouldShowMoodPrompt(user.id)) {
+      setShowMoodPrompt(true)
+    }
+  }, [user?.id, profileLoaded])
 
   const handleViewChange = (view) => {
     if (view === "chats") {
@@ -55,10 +70,23 @@ export function ChatLayout() {
     return () => window.removeEventListener("chat:deleted", handler)
   }, [selectedChat])
 
+  const handleMoodSet = () => {
+    setShowMoodPrompt(false)
+    if (user?.id) setMoodPromptShown(user.id)
+    refetchProfile()
+  }
+
   if (!user) return null
 
   return (
     <ChatsProvider>
+      <MoodPromptModal
+        open={showMoodPrompt}
+        onClose={() => setShowMoodPrompt(false)}
+        onMoodSet={handleMoodSet}
+        onSkip={() => setShowMoodPrompt(false)}
+        userId={user?.id}
+      />
       <div className="h-screen bg-gradient-to-br from-indigo-50 to-purple-100 dark:bg-background flex relative">
         {/* Mobile Hamburger Button */}
         <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
@@ -66,12 +94,12 @@ export function ChatLayout() {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden fixed top-4 left-4 z-50 bg-card dark:bg-background border border-indigo-200 dark:border-border shadow-md"
+              className="md:hidden fixed top-4 left-4 z-50 bg-card dark:bg-background border border-indigo-200 dark:border-white/30 shadow-md"
             >
               <Menu className="h-5 w-5 text-indigo-600 dark:text-foreground" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-80 p-0 bg-card dark:bg-background border-indigo-200 dark:border-border">
+          <SheetContent side="left" className="w-80 p-0 bg-card dark:bg-background border-indigo-200 dark:border-white/30">
             <ChatSidebar
               currentView={currentView}
               onViewChange={(view) => {
@@ -88,7 +116,7 @@ export function ChatLayout() {
         </Sheet>
 
         {/* Desktop Left Sidebar */}
-        <div className="hidden md:block w-80 border-r border-indigo-200 dark:border-border bg-white dark:bg-background flex-shrink-0">
+        <div className="hidden md:block w-80 border-r border-indigo-200 dark:border-white/30 bg-white dark:bg-background flex-shrink-0">
           <ChatSidebar
             currentView={currentView}
             onViewChange={handleViewChange}
@@ -109,7 +137,7 @@ export function ChatLayout() {
 
         {/* Right Panel */}
         {rightPanelView !== "none" && (
-          <div className="w-80 border-l border-indigo-200 dark:border-border bg-card dark:bg-background flex-shrink-0">
+          <div className="w-80 border-l border-indigo-200 dark:border-white/30 bg-card dark:bg-background flex-shrink-0">
             <ChatRightPanel
               view={rightPanelView}
               selectedChat={selectedChat}

@@ -107,7 +107,7 @@ export default function SuspendedPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 dark:bg-background flex items-center justify-center p-4">
-      <Card className="max-w-2xl w-full shadow-xl bg-white dark:bg-card dark:border-border">
+      <Card className="max-w-2xl w-full shadow-xl bg-white dark:bg-card dark:border-white/30">
         <CardHeader className="text-center pb-6">
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
             <AlertCircle className="h-10 w-10 text-red-600 dark:text-red-400" />
@@ -128,7 +128,7 @@ export default function SuspendedPage() {
           </Alert>
 
           {/* Single Message Writing Area - Combined Message and Appeal */}
-          <div className="bg-indigo-50 dark:bg-card border border-indigo-200 dark:border-border rounded-lg p-4 mb-4">
+          <div className="bg-indigo-50 dark:bg-card border border-indigo-200 dark:border-white/30 rounded-lg p-4 mb-4">
             <h3 className="font-semibold text-indigo-900 dark:text-foreground mb-2 flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
               Contact Admin
@@ -151,7 +151,7 @@ export default function SuspendedPage() {
                   minLength={1}
                   maxLength={5000}
                   rows={6}
-                  className="border-indigo-300 dark:border-border dark:bg-card dark:text-foreground focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500"
+                  className="border-indigo-300 dark:border-white/30 dark:bg-card dark:text-foreground focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500"
                 />
                 <p className="text-xs text-indigo-700 dark:text-muted-foreground">
                   Maximum 5000 characters. ({messageText.length}/5000)
@@ -180,14 +180,14 @@ export default function SuspendedPage() {
 
           {/* Previous Messages Section */}
           {userMessages.length > 0 && (
-            <div className="bg-gray-50 dark:bg-card border border-gray-200 dark:border-border rounded-lg p-4 mb-4">
+            <div className="bg-gray-50 dark:bg-card border border-gray-200 dark:border-white/30 rounded-lg p-4 mb-4">
               <h3 className="font-semibold text-gray-900 dark:text-foreground mb-3 flex items-center gap-2">
                 <Mail className="h-5 w-5" />
                 Your Previous Messages
               </h3>
               <div className="space-y-3 max-h-60 overflow-y-auto">
                 {userMessages.map((msg) => (
-                  <div key={msg.id} className="bg-white dark:bg-background border border-gray-200 dark:border-border rounded p-3">
+                  <div key={msg.id} className="bg-white dark:bg-background border border-gray-200 dark:border-white/30 rounded p-3">
                     <p className="text-sm text-gray-700 dark:text-foreground whitespace-pre-wrap">{msg.message}</p>
                     <p className="text-xs text-gray-500 dark:text-muted-foreground mt-2">
                       {new Date(msg.created_at).toLocaleString()}
@@ -201,7 +201,7 @@ export default function SuspendedPage() {
             </div>
           )}
 
-          <div className="pt-4 border-t dark:border-border">
+          <div className="pt-4 border-t dark:border-white/30">
             <div className="text-center space-y-4">
               <p className="text-sm text-gray-600 dark:text-muted-foreground">
                 While your account is suspended, you can:

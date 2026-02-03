@@ -47,7 +47,7 @@ export default function DeleteAccountDialog({ open, onOpenChange }) {
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="sm:max-w-md bg-white dark:bg-card dark:border-border">
+      <AlertDialogContent className="sm:max-w-md bg-white dark:bg-card dark:border-white/20">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
             <AlertTriangle className="h-5 w-5" />
@@ -69,7 +69,7 @@ export default function DeleteAccountDialog({ open, onOpenChange }) {
               required
               placeholder="Enter your password"
               autoComplete="current-password"
-              className="dark:bg-card dark:text-foreground dark:border-border"
+              className="dark:bg-card dark:text-foreground dark:border-white/20"
             />
           </div>
 

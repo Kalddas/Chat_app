@@ -2,8 +2,10 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const CallToAction = () => {
+    const { t } = useTranslation();
     return (
         <section className="py-20 bg-gradient-to-br from-indigo-600 to-purple-600 dark:from-indigo-700 dark:to-purple-700 relative overflow-hidden">
             {/* Background elements */}
@@ -22,15 +24,15 @@ const CallToAction = () => {
                 >
                     <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/10 text-white text-sm font-medium backdrop-blur-sm mb-6">
                         <Sparkles className="w-4 h-4 mr-2" />
-                        Join thousands of satisfied users
+                        {t("home.ctaBadge")}
                     </div>
 
                     <h2 className="text-3xl lg:text-4xl font-bold text-white mb-6">
-                        Ready to meet someone new?
+                        {t("home.ctaTitle")}
                     </h2>
 
                     <p className="text-indigo-100 text-lg max-w-2xl mx-auto mb-8">
-                        Join our community today and start building meaningful connections with people who share your passions and interests.
+                        {t("home.ctaSubtitle")}
                     </p>
 
                     <Button
@@ -38,7 +40,7 @@ const CallToAction = () => {
                         className="bg-white text-indigo-600 hover:bg-indigo-50 px-8 py-3 text-base font-semibold rounded-full shadow-lg shadow-indigo-900/30 hover:shadow-indigo-900/40 transition-all duration-300 group"
                     >
                         <Link to='/register' className="flex items-center">
-                            Get Started Today
+                            {t("home.ctaButton")}
                             <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                         </Link>
                     </Button>

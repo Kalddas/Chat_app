@@ -85,7 +85,7 @@ export default function ChangePasswordDialog({ open, onOpenChange, onPasswordCha
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-white dark:bg-card dark:border-border">
+      <DialogContent className="sm:max-w-md bg-white dark:bg-card dark:border-white/30">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 dark:text-foreground">
             <Lock className="h-5 w-5" />
@@ -106,7 +106,7 @@ export default function ChangePasswordDialog({ open, onOpenChange, onPasswordCha
               onChange={(e) => setOldPassword(e.target.value)}
               required
               placeholder="Enter current password"
-              className="dark:bg-card dark:text-foreground dark:border-border"
+              className="dark:bg-card dark:text-foreground dark:border-white/30"
             />
           </div>
 
@@ -119,7 +119,7 @@ export default function ChangePasswordDialog({ open, onOpenChange, onPasswordCha
               onChange={(e) => setNewPassword(e.target.value)}
               required
               placeholder="Enter new password"
-              className="dark:bg-card dark:text-foreground dark:border-border"
+              className="dark:bg-card dark:text-foreground dark:border-white/30"
             />
             {newPassword && (
               <div className="space-y-2">
@@ -157,7 +157,7 @@ export default function ChangePasswordDialog({ open, onOpenChange, onPasswordCha
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               placeholder="Confirm new password"
-              className="dark:bg-card dark:text-foreground dark:border-border"
+              className="dark:bg-card dark:text-foreground dark:border-white/30"
             />
           </div>
 

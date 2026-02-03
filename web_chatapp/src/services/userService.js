@@ -26,6 +26,24 @@ export const userApi = createApi({
       },
     }),
 
+    updateMood: builder.mutation({
+      query: ({ mood }) => ({
+        url: "user/mood",
+        method: "POST",
+        body: { mood },
+      }),
+      invalidatesTags: ['profile'],
+    }),
+
+    updateLanguage: builder.mutation({
+      query: ({ language }) => ({
+        url: "user/language",
+        method: "POST",
+        body: { language },
+      }),
+      invalidatesTags: ['profile'],
+    }),
+
     getAvailableTags: builder.query({
       query: () => "user/available/tags",
       transformResponse: (response) => {
@@ -117,6 +135,8 @@ export const userApi = createApi({
 
 export const {
   useGetUserProfileQuery,
+  useUpdateMoodMutation,
+  useUpdateLanguageMutation,
   useGetAvailableTagsQuery,
   useUpdateProfileMutation,
   useSubmitReportMutation,

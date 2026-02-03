@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -28,10 +29,10 @@ import { useLogoutMutation } from "../../services/authService"
 import { useGetUserProfileQuery } from "../../services/userService"
 import { useGetAllConversationsQuery, useGetReceivedRequestsQuery } from "../../services/chatService"
 import { useTheme } from "@/contexts/ThemeContext"
-import { NotificationBell } from "../NotificationBell"
 import { Badge } from "@/components/ui/badge"
 
 export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSelect }) {
+  const { t } = useTranslation()
   const { user, logout } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
@@ -108,11 +109,11 @@ export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSel
   const pendingRequestsCount = requestsData?.length || 0
 
   const navigationItems = [
-    { id: "chats", label: "Chats", icon: MessageCircle, badge: unreadMessagesCount },
-    { id: "discovery", label: "Discovery", icon: Users },
-    { id: "requests", label: "Requests", icon: UserPlus, badge: pendingRequestsCount },
-    { id: "profile", label: "Profile", icon: User },
-    { id: "settings", label: "Settings", icon: Settings },
+    { id: "chats", labelKey: "nav.chats", icon: MessageCircle, badge: unreadMessagesCount },
+    { id: "discovery", labelKey: "nav.discover", icon: Users },
+    { id: "requests", labelKey: "nav.requests", icon: UserPlus, badge: pendingRequestsCount },
+    { id: "profile", labelKey: "nav.profile", icon: User },
+    { id: "settings", labelKey: "nav.settings", icon: Settings },
   ]
 
   const renderView = () => {
@@ -136,7 +137,7 @@ export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSel
     <>
       <div className="h-full flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b border-indigo-200 dark:border-border">
+        <div className="p-4 border-b border-indigo-200 dark:border-white/30">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
@@ -163,17 +164,16 @@ export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSel
                 {profileLoading ? (
                   <p className="text-sm text-indigo-600 dark:text-muted-foreground">Loading...</p>
                 ) : profileError ? (
-                  <p className="text-sm text-red-500 dark:text-red-400">Failed to load</p>
+                  <p className="text-sm text-red-500 dark:text-red-400">{t('errors.failedToLoad')}</p>
                 ) : (
                   <>
                     <h2 className="font-semibold text-indigo-900 dark:text-foreground">{profile?.first_name} {profile?.last_name}</h2>
-                    <p className="text-xs text-indigo-600 dark:text-muted-foreground">Online</p>
+                    <p className="text-xs text-indigo-600 dark:text-muted-foreground">{t('common.online')}</p>
                   </>
                 )}
               </div>
             </div>
             <div className="flex items-center gap-1">
-              <NotificationBell userId={user?.id} isAdmin={false} />
               <Button
                 variant="ghost"
                 size="sm"
@@ -189,28 +189,28 @@ export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSel
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-card dark:bg-card border-indigo-200 dark:border-border">
+                <DropdownMenuContent align="end" className="bg-card dark:bg-card border-indigo-200 dark:border-white/30">
                   <DropdownMenuItem
                     onClick={() => onViewChange("profile")}
                     className="text-indigo-700 dark:text-foreground focus:bg-indigo-100 dark:focus:bg-accent focus:text-indigo-900 dark:focus:text-foreground"
                   >
                     <User className="mr-2 h-4 w-4" />
-                    Profile
+                    {t('nav.profile')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => onViewChange("settings")}
                     className="text-indigo-700 dark:text-foreground focus:bg-indigo-100 dark:focus:bg-accent focus:text-indigo-900 dark:focus:text-foreground"
                   >
                     <Settings className="mr-2 h-4 w-4" />
-                    Settings
+                    {t('nav.settings')}
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-indigo-200 dark:bg-border" />
+                  <DropdownMenuSeparator className="bg-indigo-200 dark:bg-white/30" />
                   <DropdownMenuItem
                     onClick={() => setShowLogoutDialog(true)}
                     className="text-red-600 dark:text-red-400 focus:bg-red-100 dark:focus:bg-red-900 focus:text-red-900 dark:focus:text-red-100"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
-                    Logout
+                    {t('auth.logout')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -221,16 +221,16 @@ export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSel
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-indigo-500 dark:text-muted-foreground" />
             <Input
-              placeholder="Search..."
+              placeholder={t('common.search') + "..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 border-indigo-300 dark:border-border focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500 dark:focus:ring-primary bg-white dark:bg-input text-gray-900 dark:text-foreground placeholder:text-gray-500 dark:placeholder:text-muted-foreground"
+              className="pl-10 border-indigo-300 dark:border-white/30 focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500 dark:focus:ring-primary bg-white dark:bg-input text-gray-900 dark:text-foreground placeholder:text-gray-500 dark:placeholder:text-muted-foreground"
             />
           </div>
         </div>
 
         {/* Navigation */}
-        <div className="px-2 py-2 border-b border-indigo-200 dark:border-border">
+        <div className="px-2 py-2 border-b border-indigo-200 dark:border-white/30">
           <div className="flex gap-1">
             {navigationItems.map((item) => (
               <Button
@@ -262,11 +262,11 @@ export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSel
 
       {/* Logout Confirmation Dialog */}
       <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
-        <DialogContent className="sm:max-w-md bg-card dark:bg-card border-indigo-200 dark:border-border">
+        <DialogContent className="sm:max-w-md bg-card dark:bg-card border-indigo-200 dark:border-white/30">
           <DialogHeader>
-            <DialogTitle className="text-indigo-900 dark:text-foreground">Confirm Logout</DialogTitle>
+            <DialogTitle className="text-indigo-900 dark:text-foreground">{t('common.confirm')} {t('auth.logout')}</DialogTitle>
             <DialogDescription className="text-indigo-700 dark:text-muted-foreground">
-              Are you sure you want to logout? You'll need to sign in again to access your account.
+              {t('settings.deleteAccountDesc')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2 sm:justify-end">
@@ -274,7 +274,7 @@ export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSel
               variant="outline"
               onClick={() => setShowLogoutDialog(false)}
               disabled={isLoggingOut}
-              className="border-indigo-300 dark:border-border text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"
+              className="border-indigo-300 dark:border-white/30 text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"
             >
               Cancel
             </Button>

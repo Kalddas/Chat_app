@@ -100,7 +100,7 @@ export function ActionLogsView() {
       </div>
 
       {/* Filters */}
-      <Card className="border-indigo-200 dark:border-border dark:bg-card">
+      <Card className="border-indigo-200 dark:border-white/20 dark:bg-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-indigo-900 dark:text-foreground">
             <Search className="h-5 w-5 text-indigo-600 dark:text-primary" />
@@ -116,7 +116,7 @@ export function ActionLogsView() {
                   placeholder="Search by admin, user, or reason..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 border-indigo-300 dark:border-border dark:bg-input dark:text-foreground focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500"
+                  className="pl-10 border-indigo-300 dark:border-white/20 dark:bg-input dark:text-foreground focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500"
                 />
               </div>
             </div>
@@ -124,7 +124,7 @@ export function ActionLogsView() {
               <SelectTrigger className="w-40 border-indigo-300 focus:border-indigo-500 focus:ring-indigo-500">
                 <SelectValue placeholder="Filter by action" />
               </SelectTrigger>
-              <SelectContent className="bg-white dark:bg-card border-indigo-200 dark:border-border">
+              <SelectContent className="bg-white dark:bg-card border-indigo-200 dark:border-white/20">
                 <SelectItem value="all">All Actions</SelectItem>
                 <SelectItem value="ban">Ban</SelectItem>
                 <SelectItem value="suspend">Suspend</SelectItem>
@@ -137,7 +137,7 @@ export function ActionLogsView() {
       </Card>
 
       {/* Logs */}
-      <Card className="border-indigo-200 dark:border-border dark:bg-card">
+      <Card className="border-indigo-200 dark:border-white/20 dark:bg-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-indigo-900 dark:text-foreground">
             <FileText className="h-5 w-5 text-indigo-600 dark:text-primary" />
@@ -152,7 +152,7 @@ export function ActionLogsView() {
           ) : (
             <div className="space-y-4">
               {filteredLogs.map((log) => (
-                <div key={log.id} className="flex items-center justify-between p-4 border border-indigo-200 dark:border-border rounded-lg bg-white dark:bg-card">
+                <div key={log.id} className="flex items-center justify-between p-4 border border-indigo-200 dark:border-white/20 rounded-lg bg-white dark:bg-card">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       {getActionBadge(log.action)}

@@ -138,7 +138,7 @@ export function UserManagementView() {
       </div>
 
       {/* Filters */}
-      <Card className="dark:bg-card dark:border-border">
+      <Card className="dark:bg-card dark:border-white/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 dark:text-foreground">
             <Filter className="h-5 w-5" /> Filters
@@ -152,15 +152,15 @@ export function UserManagementView() {
                 placeholder="Search by name or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 dark:bg-input dark:text-foreground dark:border-border"
+                className="pl-10 dark:bg-input dark:text-foreground dark:border-white/20"
               />
             </div>
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-40 dark:bg-input dark:text-foreground dark:border-border">
+              <SelectTrigger className="w-full md:w-40 dark:bg-input dark:text-foreground dark:border-white/20">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
-              <SelectContent className="dark:bg-card dark:border-border">
+              <SelectContent className="dark:bg-card dark:border-white/20">
                 <SelectItem value="all" className="dark:text-foreground">All Status</SelectItem>
                 <SelectItem value="active" className="dark:text-foreground">Active</SelectItem>
                 <SelectItem value="suspended" className="dark:text-foreground">Suspended</SelectItem>
@@ -173,7 +173,7 @@ export function UserManagementView() {
       </Card>
 
       {/* Users Table */}
-      <Card className="dark:bg-card dark:border-border">
+      <Card className="dark:bg-card dark:border-white/20">
         <CardHeader>
           <CardTitle className="dark:text-foreground">Users ({filteredUsers.length})</CardTitle>
         </CardHeader>
@@ -240,7 +240,7 @@ export function UserManagementView() {
                             size="sm"
                             onClick={() => setSelectedUserId(user.id)}
                             variant="outline"
-                            className="dark:bg-card dark:border-border dark:text-foreground hover:bg-indigo-50 dark:hover:bg-accent hover:text-indigo-500 dark:hover:text-primary"
+                            className="dark:bg-card dark:border-white/20 dark:text-foreground hover:bg-indigo-50 dark:hover:bg-accent hover:text-indigo-500 dark:hover:text-primary"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -305,7 +305,7 @@ export function UserManagementView() {
 
       {/* Status Change Confirmation Dialog */}
       <Dialog open={!!userToUpdateStatus} onOpenChange={() => setUserToUpdateStatus(null)}>
-        <DialogContent className="bg-indigo-50 dark:bg-card border-2 border-indigo-300 dark:border-border rounded-xl shadow-lg">
+        <DialogContent className="bg-indigo-50 dark:bg-card border-2 border-indigo-300 dark:border-white/20 rounded-xl shadow-lg">
           <DialogHeader className="text-indigo-700 dark:text-foreground">
             <DialogTitle className="text-xl font-bold text-indigo-800 dark:text-foreground">Confirm Status Change</DialogTitle>
             <DialogDescription className="text-indigo-600 dark:text-muted-foreground">
@@ -313,7 +313,7 @@ export function UserManagementView() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4 flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setUserToUpdateStatus(null)} className="border-indigo-300 dark:border-border text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent">
+            <Button variant="outline" onClick={() => setUserToUpdateStatus(null)} className="border-indigo-300 dark:border-white/20 text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent">
               Cancel
             </Button>
             <Button className="bg-primary hover:bg-primary/90 text-white" onClick={executeStatusChange}>

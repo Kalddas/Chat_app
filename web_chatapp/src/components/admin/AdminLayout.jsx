@@ -56,12 +56,12 @@ export function AdminLayout() {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden fixed top-4 left-4 z-50 bg-white dark:bg-background border border-indigo-200 dark:border-border shadow-md"
+            className="md:hidden fixed top-4 left-4 z-50 bg-white dark:bg-background border border-indigo-200 dark:border-white/20 shadow-md"
           >
             <Menu className="h-5 w-5 text-indigo-600 dark:text-foreground" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-64 p-0 bg-white dark:bg-background border-indigo-200 dark:border-border">
+        <SheetContent side="left" className="w-64 p-0 bg-white dark:bg-background border-indigo-200 dark:border-white/20">
           <AdminSidebar 
             currentView={currentView} 
             onViewChange={(view) => {
@@ -73,7 +73,7 @@ export function AdminLayout() {
       </Sheet>
 
       {/* Desktop Sidebar */}
-      <div className="hidden md:block w-64 border-r border-indigo-200 dark:border-border bg-white dark:bg-background flex-shrink-0">
+      <div className="hidden md:block w-64 border-r border-indigo-200 dark:border-white/20 bg-white dark:bg-background flex-shrink-0">
         <AdminSidebar currentView={currentView} onViewChange={setCurrentView} />
       </div>
 

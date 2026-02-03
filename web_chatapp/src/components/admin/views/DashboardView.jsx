@@ -68,7 +68,7 @@ export function DashboardView() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {stats.map((stat) => (
-          <Card key={stat.title} className="border-indigo-200 dark:border-border dark:bg-card">
+          <Card key={stat.title} className="border-indigo-200 dark:border-white/30 dark:bg-card">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -85,7 +85,7 @@ export function DashboardView() {
       </div>
 
       {/* Recent Active Users */}
-      <Card className="border-indigo-200 dark:border-border dark:bg-card">
+      <Card className="border-indigo-200 dark:border-white/30 dark:bg-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-indigo-900 dark:text-foreground">
             <TrendingUp className="h-5 w-5 text-indigo-600 dark:text-primary" />
@@ -95,7 +95,7 @@ export function DashboardView() {
         <CardContent>
           <div className="space-y-4">
             {data?.recent_active_users?.map((user, index) => (
-              <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-indigo-50 dark:bg-card dark:border dark:border-border">
+              <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-indigo-50 dark:bg-card dark:border dark:border-white/30">
                 <div>
                   <p className="font-medium text-indigo-900 dark:text-foreground">
                     {user.first_name} {user.last_name}

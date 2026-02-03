@@ -55,7 +55,7 @@ export function AdminSettingsView() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* System Configuration */}
-        <Card className="border-indigo-200 dark:border-border dark:bg-card">
+        <Card className="border-indigo-200 dark:border-white/30 dark:bg-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-indigo-900 dark:text-foreground">
               <Settings className="h-5 w-5 text-indigo-600 dark:text-primary" />
@@ -108,7 +108,7 @@ export function AdminSettingsView() {
         </Card>
 
         {/* Security & Moderation */}
-        <Card className="border-indigo-200 dark:border-border dark:bg-card">
+        <Card className="border-indigo-200 dark:border-white/30 dark:bg-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-indigo-900">
               <Shield className="h-5 w-5 text-indigo-600" />
@@ -145,7 +145,7 @@ export function AdminSettingsView() {
                 <SelectTrigger className="border-indigo-300 focus:border-indigo-500 focus:ring-indigo-500">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-card border-indigo-200 dark:border-border">
+                <SelectContent className="bg-white dark:bg-card border-indigo-200 dark:border-white/30">
                   <SelectItem value="1">1 hour</SelectItem>
                   <SelectItem value="6">6 hours</SelectItem>
                   <SelectItem value="12">12 hours</SelectItem>
@@ -158,7 +158,7 @@ export function AdminSettingsView() {
         </Card>
 
         {/* User Management */}
-        <Card className="border-indigo-200 dark:border-border dark:bg-card">
+        <Card className="border-indigo-200 dark:border-white/30 dark:bg-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-indigo-900">
               <Users className="h-5 w-5 text-indigo-600" />
@@ -185,7 +185,7 @@ export function AdminSettingsView() {
                 <SelectTrigger className="border-indigo-300 focus:border-indigo-500 focus:ring-indigo-500">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-card border-indigo-200 dark:border-border">
+                <SelectContent className="bg-white dark:bg-card border-indigo-200 dark:border-white/30">
                   <SelectItem value="10">10 members</SelectItem>
                   <SelectItem value="25">25 members</SelectItem>
                   <SelectItem value="50">50 members</SelectItem>
@@ -198,7 +198,7 @@ export function AdminSettingsView() {
         </Card>
 
         {/* Notifications */}
-        <Card className="border-indigo-200 dark:border-border dark:bg-card">
+        <Card className="border-indigo-200 dark:border-white/30 dark:bg-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-indigo-900">
               <Bell className="h-5 w-5 text-indigo-600" />

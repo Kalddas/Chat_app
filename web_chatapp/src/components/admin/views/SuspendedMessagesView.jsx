@@ -179,7 +179,7 @@ export function SuspendedMessagesView() {
               <Button
                 onClick={handleMarkAllAsRead}
                 variant="outline"
-                className="border-indigo-300 dark:border-border text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"
+                className="border-indigo-300 dark:border-white/30 text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Mark All Read
@@ -193,14 +193,14 @@ export function SuspendedMessagesView() {
           <Button
             variant={filter === "all" ? "default" : "outline"}
             onClick={() => setFilter("all")}
-            className={filter === "all" ? "bg-primary" : "border-indigo-300 dark:border-border text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"}
+            className={filter === "all" ? "bg-primary" : "border-indigo-300 dark:border-white/30 text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"}
           >
             All Messages
           </Button>
           <Button
             variant={filter === "unread" ? "default" : "outline"}
             onClick={() => setFilter("unread")}
-            className={filter === "unread" ? "bg-primary" : "border-indigo-300 dark:border-border text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"}
+            className={filter === "unread" ? "bg-primary" : "border-indigo-300 dark:border-white/30 text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"}
           >
             Unread
             {unreadCount > 0 && (
@@ -212,7 +212,7 @@ export function SuspendedMessagesView() {
           <Button
             variant={filter === "read" ? "default" : "outline"}
             onClick={() => setFilter("read")}
-            className={filter === "read" ? "bg-primary" : "border-indigo-300 dark:border-border text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"}
+            className={filter === "read" ? "bg-primary" : "border-indigo-300 dark:border-white/30 text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"}
           >
             Read
           </Button>
@@ -224,7 +224,7 @@ export function SuspendedMessagesView() {
             <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-primary" />
           </div>
         ) : messages.length === 0 ? (
-          <Card className="border-indigo-200 dark:border-border dark:bg-card">
+          <Card className="border-indigo-200 dark:border-white/30 dark:bg-card">
             <CardContent className="p-12 text-center">
               <Mail className="h-12 w-12 text-indigo-400 dark:text-muted-foreground mx-auto mb-4" />
               <p className="text-indigo-600 dark:text-muted-foreground text-lg">
@@ -237,7 +237,7 @@ export function SuspendedMessagesView() {
             {messages.map((message) => (
               <Card
                 key={message.id}
-                className={`border-indigo-200 dark:border-border dark:bg-card ${
+                className={`border-indigo-200 dark:border-white/30 dark:bg-card ${
                   !message.is_read ? "border-l-4 border-l-primary" : ""
                 }`}
               >
@@ -281,7 +281,7 @@ export function SuspendedMessagesView() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="bg-indigo-50 dark:bg-background border border-indigo-200 dark:border-border rounded-lg p-4">
+                  <div className="bg-indigo-50 dark:bg-background border border-indigo-200 dark:border-white/30 rounded-lg p-4">
                     <p className="text-sm text-indigo-900 dark:text-foreground whitespace-pre-wrap">
                       {message.message}
                     </p>
@@ -312,7 +312,7 @@ export function SuspendedMessagesView() {
                         onClick={() => handleMarkAsRead(message.id)}
                         size="sm"
                         variant="outline"
-                        className="border-indigo-300 dark:border-border text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"
+                        className="border-indigo-300 dark:border-white/30 text-indigo-700 dark:text-foreground hover:bg-indigo-100 dark:hover:bg-accent"
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         Mark as Read
@@ -331,7 +331,7 @@ export function SuspendedMessagesView() {
                   </div>
 
                   {respondingTo === message.id && (
-                    <div className="bg-gray-50 dark:bg-background border border-gray-200 dark:border-border rounded-lg p-4 space-y-3">
+                    <div className="bg-gray-50 dark:bg-background border border-gray-200 dark:border-white/30 rounded-lg p-4 space-y-3">
                       <Label htmlFor={`response-${message.id}`} className="text-indigo-900 dark:text-foreground">
                         Your Response:
                       </Label>
@@ -341,7 +341,7 @@ export function SuspendedMessagesView() {
                         value={responseText}
                         onChange={(e) => setResponseText(e.target.value)}
                         rows={4}
-                        className="border-indigo-300 dark:border-border dark:bg-card dark:text-foreground focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500"
+                        className="border-indigo-300 dark:border-white/30 dark:bg-card dark:text-foreground focus:border-indigo-500 dark:focus:border-primary focus:ring-indigo-500"
                       />
                       <div className="flex gap-2">
                         <Button

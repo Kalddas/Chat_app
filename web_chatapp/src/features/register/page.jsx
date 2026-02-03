@@ -24,10 +24,13 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "react-toastify";
+import { useTranslation } from "react-i18next";
 import { useSendChatRequestMutation } from "../../services/chatService"
 import { useAuth } from "../../contexts/AuthContext";
 
 export default function RegisterPage() {
+  const { t } = useTranslation();
+  const { login: authLogin } = useAuth();
   const [step, setStep] = useState("info");
   const [formData, setFormData] = useState({
     username: "",
@@ -83,13 +86,13 @@ export default function RegisterPage() {
         receiver_id: userId, // Backend uses authenticated user as sender
       }).unwrap()
       setSentRequests([...sentRequests, userId])
-      toast.success("Connection request sent successfully!");
+      toast.success(t("auth.connectionRequestSent"));
     } catch (err) {
       console.error("Failed to send request:", err)
       const backendMessage =
         err?.data?.message ||
         err?.data?.error ||
-        "Failed to send connection request";
+        t("auth.failedToSendRequest");
       toast.error(backendMessage);
     }
   }
@@ -116,13 +119,15 @@ export default function RegisterPage() {
   const handleNext = (e) => {
     e.preventDefault();
     if (!formData.username || !formData.email || !formData.password || !formData.confirmPassword) {
-      setError("Please fill in all required fields");
-      toast.error("Please fill in all required fields");
+      const msg = t("auth.fillRequiredFields");
+      setError(msg);
+      toast.error(msg);
       return;
     }
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
-      toast.error("Passwords do not match");
+      const msg = t("auth.passwordsDoNotMatch");
+      setError(msg);
+      toast.error(msg);
       return;
     }
     setError("");
@@ -170,7 +175,7 @@ export default function RegisterPage() {
       }).unwrap();
       setStep("otp");
       setTimeLeft(600);
-      toast.success("Registration successful! Check your email for OTP.");
+      toast.success(t("auth.registrationSuccess"));
     }
     catch (err) {
       if (err?.data?.errors) {
@@ -186,8 +191,9 @@ export default function RegisterPage() {
         }
       } else {
         console.error("Unexpected error:", err);
-        setError(err.data?.message || "Registration failed");
-        toast.error(err.data?.message || "Registration failed");
+        const msg = err.data?.message || t("auth.registrationFailed");
+        setError(msg);
+        toast.error(msg);
       }
     }
   };
@@ -205,19 +211,25 @@ export default function RegisterPage() {
       const otpString = otp.join("");
       const data = await verifyOtp({ email: formData.email, otp: otpString }).unwrap();
 
-      localStorage.setItem("token", data.token);
+      if (data.user && data.token) {
+        authLogin({ user: data.user, token: data.token });
+      } else {
+        localStorage.setItem("token", data.token);
+        if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
+      }
       setStep("success");
-      toast.success("Account verified successfully!");
+      toast.success(t("auth.accountVerifiedSuccess"));
 
-      const from = data.user.role === "admin" ? "/admin" : "/chat";
+      const from = data.user?.role === "admin" ? "/admin" : "/chat";
       navigate(from, { replace: true });
 
       setTimeout(() => {
         window.location.reload();
       }, 100);
     } catch (err) {
-      setError(err.data?.message || "OTP verification failed");
-      toast.error(err.data?.message || "OTP verification failed");
+      const msg = err.data?.message || t("auth.otpVerificationFailed");
+      setError(msg);
+      toast.error(msg);
     }
   };
 
@@ -225,10 +237,11 @@ export default function RegisterPage() {
     try {
       await resendOtp(formData.email).unwrap();
       setTimeLeft(600);
-      toast.info("OTP has been resent to your email");
+      toast.info(t("auth.otpResent"));
     } catch (err) {
-      setError(err.data?.message || "Failed to resend OTP");
-      toast.error(err.data?.message || "Failed to resend OTP");
+      const msg = err.data?.message || t("auth.resendOtp");
+      setError(msg);
+      toast.error(msg);
     }
   };
 
@@ -236,7 +249,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 dark:bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-lg bg-white dark:bg-card p-6 rounded-2xl ">
+      <div className="w-full max-w-lg bg-white dark:bg-card p-6 rounded-2xl border border-indigo-100 dark:border-white/30">
         <div className="text-center">
           <div className="flex items-center justify-center gap-2 ">
             <div className="relative">
@@ -253,9 +266,9 @@ export default function RegisterPage() {
           <>
             <Card className="border-0 rounded-2xl overflow-hidden shadow-none">
               <CardHeader className="pb-4">
-                <CardTitle className="text-2xl text-card-foreground">Sign Up</CardTitle>
+                <CardTitle className="text-2xl text-card-foreground">{t("auth.signUp")}</CardTitle>
                 <CardDescription className="text-muted-foreground">
-                  {step === "info" ? "Enter your details" : "Choose at least one interest"}
+                  {step === "info" ? t("auth.enterYourDetails") : t("auth.chooseInterests")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -265,19 +278,19 @@ export default function RegisterPage() {
                       <div className="grid grid-cols-2 gap-4">
                         <Input
                           name="firstName"
-                          placeholder="First Name"
+                          placeholder={t("auth.firstNamePlaceholder")}
                           value={formData.firstName}
                           onChange={handleInputChange}
                           required
-                          className="rounded-lg border-border focus:border-indigo-500 focus:ring-indigo-500"
+                          className="rounded-lg border-border dark:border-white/30 focus:border-indigo-500 focus:ring-indigo-500"
                         />
                         <Input
                           name="lastName"
-                          placeholder="Last Name"
+                          placeholder={t("auth.lastNamePlaceholder")}
                           value={formData.lastName}
                           onChange={handleInputChange}
                           required
-                          className="rounded-lg border-border focus:border-indigo-500 focus:ring-indigo-500"
+                          className="rounded-lg border-border dark:border-white/30 focus:border-indigo-500 focus:ring-indigo-500"
                         />
                       </div>
                       <Input
@@ -287,44 +300,44 @@ export default function RegisterPage() {
                         onChange={handleInputChange}
                         required
                         autoComplete="username"
-                        className="rounded-lg border-border focus:border-indigo-500 focus:ring-indigo-500"
+                        className="rounded-lg border-border dark:border-white/30 focus:border-indigo-500 focus:ring-indigo-500"
                       />
                       <Input
                         name="email"
                         type="email"
-                        placeholder="Email"
+                        placeholder={t("auth.email")}
                         value={formData.email}
                         onChange={handleInputChange}
                         required
                         autoComplete="email"
-                        className="rounded-lg border-border focus:border-indigo-500 focus:ring-indigo-500"
+                        className="rounded-lg border-border dark:border-white/30 focus:border-indigo-500 focus:ring-indigo-500"
                       />
                       <Input
                         name="phone"
-                        placeholder="Phone Number"
+                        placeholder={t("auth.phoneNumberPlaceholder")}
                         value={formData.phone}
                         onChange={handleInputChange}
                         required
-                        className="rounded-lg border-border focus:border-indigo-500 focus:ring-indigo-500"
+                        className="rounded-lg border-border dark:border-white/30 focus:border-indigo-500 focus:ring-indigo-500"
                       />
                       <Input
                         name="bio"
-                        placeholder="Bio (Optional)"
+                        placeholder={t("auth.bioOptional")}
                         value={formData.bio}
                         onChange={handleInputChange}
                         autoComplete="additional-name"
-                        className="rounded-lg border-border focus:border-indigo-500 focus:ring-indigo-500"
+                        className="rounded-lg border-border dark:border-white/30 focus:border-indigo-500 focus:ring-indigo-500"
                       />
                       <div className="relative">
                         <Input
                           name="password"
                           type={showPassword ? "text" : "password"}
-                          placeholder="Password"
+                          placeholder={t("auth.password")}
                           value={formData.password}
                           onChange={handleInputChange}
                           required
                           autoComplete="new-password"
-                          className="rounded-lg border-border focus:border-indigo-500 focus:ring-indigo-500 pr-10"
+                          className="rounded-lg border-border dark:border-white/30 focus:border-indigo-500 focus:ring-indigo-500 pr-10"
                         />
                         <Button
                           type="button"
@@ -340,12 +353,12 @@ export default function RegisterPage() {
                         <Input
                           name="confirmPassword"
                           type={showConfirmPassword ? "text" : "password"}
-                          placeholder="Confirm Password"
+                          placeholder={t("auth.confirmPassword")}
                           value={formData.confirmPassword}
                           onChange={handleInputChange}
                           required
                           autoComplete="new-password"
-                          className="rounded-lg border-border focus:border-indigo-500 focus:ring-indigo-500 pr-10"
+                          className="rounded-lg border-border dark:border-white/30 focus:border-indigo-500 focus:ring-indigo-500 pr-10"
                         />
                         <Button
                           type="button"
@@ -367,21 +380,21 @@ export default function RegisterPage() {
                           <div
                             key={tag.id}
                             className={`flex items-center space-x-2 rounded-lg p-3 border transition-all ${selectedTags.includes(tag.id)
-                              ? "border-indigo-500 bg-indigo-50"
-                              : "border-border hover:border-indigo-300"
+                              ? "border-indigo-500 bg-indigo-50 dark:border-white/30 dark:bg-white/5"
+                              : "border-border dark:border-white/30 hover:border-indigo-300"
                               }`}
                           >
                             <Checkbox
                               id={`tag-${tag.id}`}
                               checked={selectedTags.includes(tag.id)}
                               onCheckedChange={() => handleTagToggle(tag.id)}
-                              className="border-border rounded-sm bg-white dark:bg-card data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                              className="border-border dark:border-white/30 rounded-sm bg-white dark:bg-card data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
                             />
                             <Label
                               htmlFor={`tag-${tag.id}`}
                               className="text-sm font-medium cursor-pointer flex-1"
                             >
-                              {tag.name}
+                              {t(`tags.${tag.name.toLowerCase()}`, tag.name)}
                             </Label>
                           </div>
                         ))}
@@ -403,7 +416,7 @@ export default function RegisterPage() {
                         className="cursor-pointer flex items-center gap-1 bg-gradient-indigo-purple text-white px-3 py-2 rounded-sm text-sm hover:opacity-90 transition-opacity"
                       >
                         <ArrowLeft className="h-4 w-4" />
-                        Back
+                        {t("common.back")}
                       </button>
                     )}
 
@@ -412,14 +425,14 @@ export default function RegisterPage() {
                       className="cursor-pointer flex items-center gap-1 bg-gradient-indigo-purple text-white px-4 py-2 rounded-sm hover:opacity-90 transition-opacity"
                     >
                       {step === "info" ? (
-                        "Next"
+                        t("common.next")
                       ) : isRegistering ? (
                         <>
                           <Loader2 className="animate-spin h-4 w-4 mr-1" />
-                          Registering...
+                          {t("auth.registering")}
                         </>
                       ) : (
-                        "Register"
+                        t("auth.register")
                       )}
                     </button>
                   </div>
@@ -438,7 +451,7 @@ export default function RegisterPage() {
                     </Button>
 
                     <span className="text-sm text-muted-foreground">
-                      Page {currentTagPage} of {totalTagPages}
+                      {t("common.pageOf", { current: currentTagPage, total: totalTagPages })}
                     </span>
 
                     <Button
@@ -457,12 +470,12 @@ export default function RegisterPage() {
 
             <div className="text-center mt-6">
               <p className="text-sm text-muted-foreground">
-                Already have an account?{" "}
+                {t("auth.alreadyHaveAccount")}{" "}
                 <Link
                   to="/login"
                   className="text-indigo-600 hover:text-indigo-800 font-medium hover:underline transition-colors"
                 >
-                  Login
+                  {t("auth.login")}
                 </Link>
               </p>
             </div>
@@ -471,12 +484,12 @@ export default function RegisterPage() {
 
         {/* OTP Step */}
         {step === "otp" && (
-          <Card className=" border-0 rounded-2xl overflow-hidden">
+          <Card className="border border-indigo-100 dark:border-white/30 rounded-2xl overflow-hidden bg-white dark:bg-card">
             {/* <div className="bg-gradient-indigo-purple h-2 w-full"></div> */}
             <CardHeader className="pb-4">
-              <CardTitle className="text-2xl text-card-foreground">Enter OTP</CardTitle>
-              <CardDescription className="text-muted-foreground">
-                We've sent a 6-digit code to {formData.email}
+              <CardTitle className="text-2xl text-card-foreground dark:text-foreground">{t("auth.enterOtp")}</CardTitle>
+              <CardDescription className="text-muted-foreground dark:text-muted-foreground">
+                {t("auth.otpSentTo", { email: formData.email })}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -488,7 +501,7 @@ export default function RegisterPage() {
                     maxLength={1}
                     value={digit}
                     onChange={(e) => handleOtpChange(idx, e.target.value)}
-                    className="w-14 h-14 text-center text-xl font-semibold rounded-lg border-indigo-300 focus:border-indigo-500 focus:ring-indigo-500"
+                    className="w-14 h-14 text-center text-xl font-semibold rounded-lg border-indigo-300 dark:border-white/60 focus:border-indigo-500 focus:ring-indigo-500 dark:bg-card dark:text-foreground"
                   />
                 ))}
               </div>
@@ -512,14 +525,14 @@ export default function RegisterPage() {
                 )}
               </Button>
               <p className="text-sm text-muted-foreground text-center">
-                Time left: {formatTime(timeLeft)}{" "}
+                {t("auth.timeLeft")}: {formatTime(timeLeft)}{" "}
                 <Button
                   variant="link"
                   onClick={handleResendOtp}
                   disabled={isResending || timeLeft > 540}
                   className="text-indigo-600 hover:text-indigo-800 p-0 ml-1 h-auto"
                 >
-                  {isResending ? "Resending..." : "Resend"}
+                  {isResending ? t("auth.resending") : t("auth.resendOtp")}
                 </Button>
               </p>
             </CardContent>
@@ -535,10 +548,10 @@ export default function RegisterPage() {
                   <CheckCircle className="h-6 w-6 text-green-600" />
                 </div>
                 <DialogTitle className="text-center text-2xl text-foreground">
-                  Welcome to the Community!
+                  {t("auth.welcomeCommunity")}
                 </DialogTitle>
                 <DialogDescription className="text-center text-muted-foreground">
-                  Your account has been successfully verified!
+                  {t("auth.accountVerified")}
                 </DialogDescription>
               </DialogHeader>
 
@@ -574,7 +587,7 @@ export default function RegisterPage() {
                                 {match.user.first_name} {match.user.last_name}
                               </p>
                               <p className="text-xs text-muted-foreground truncate">
-                                Match score: {Math.round(match.score * 100)}%
+                                {t("discover.matchScore", { percent: Math.round(match.score * 100) })}
                               </p>
                             </div>
                             <Button
@@ -582,10 +595,10 @@ export default function RegisterPage() {
                               variant="outline"
                               onClick={() => handleSendRequest(match.user.id)}
                               disabled={isRequestSent}
-                              className="ml-2 bg-white dark:bg-card border-indigo-300 dark:border-border text-indigo-700 dark:text-foreground hover:bg-indigo-50 dark:hover:bg-accent"
+                              className="ml-2 bg-white dark:bg-card border-indigo-300 dark:border-white/30 text-indigo-700 dark:text-foreground hover:bg-indigo-50 dark:hover:bg-accent"
                             >
                               <UserPlus className="h-4 w-4 mr-1" />
-                              {isRequestSent ? "Request Sent" : "Connect"}
+                              {isRequestSent ? t("discover.requestSent") : t("auth.connect")}
                             </Button>
                           </div>
                         );
@@ -605,9 +618,9 @@ export default function RegisterPage() {
                           <ChevronLeft className="h-4 w-4" />
                         </Button>
 
-                        <span className="text-sm text-muted-foreground">
-                          Page {currentMatchPage} of {totalMatchPages}
-                        </span>
+<span className="text-sm text-muted-foreground">
+                        {t("common.pageOf", { current: currentMatchPage, total: totalMatchPages })}
+                      </span>
 
                         <Button
                           variant="outline"
@@ -629,7 +642,7 @@ export default function RegisterPage() {
                   className="flex-1 py-3 rounded-lg bg-gradient-indigo-purple hover:bg-gradient-indigo-purple-dark text-[#3b82f6] font-medium dark:text-[#3b82f6] shadow-md hover:shadow-lg transition-all duration-200"
                   onClick={() => navigate("/chat")}
                 >
-                  Start Chatting
+                  {t("auth.startChatting")}
                 </Button>
               </div>
             </DialogContent>

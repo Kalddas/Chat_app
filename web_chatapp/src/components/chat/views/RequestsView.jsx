@@ -81,10 +81,10 @@ export function RequestsView() {
       ) : (
         <div className="space-y-3">
           {localRequests.map((request) => (
-            <Card key={request.id} className="border-indigo-200 dark:border-border dark:bg-background">
+            <Card key={request.id} className="border-indigo-200 dark:border-white/30 dark:bg-background">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <Avatar className="h-12 w-12 border-2 border-indigo-100 dark:border-border">
+                  <Avatar className="h-12 w-12 border-2 border-indigo-100 dark:border-white/30">
                     <AvatarImage src={request.avatar} alt={request.name} />
                     <AvatarFallback className="bg-indigo-100 dark:bg-card text-indigo-700 dark:text-foreground">{request.name.charAt(0)}</AvatarFallback>
                   </Avatar>
@@ -108,7 +108,7 @@ export function RequestsView() {
                     size="sm"
                     variant="outline"
                     onClick={() => handleDeclineRequest(request.id)}
-                    className="flex-1 border-indigo-300 dark:border-border text-indigo-700 dark:text-foreground hover:bg-indigo-50 dark:hover:bg-accent"
+                    className="flex-1 border-indigo-300 dark:border-white/30 text-indigo-700 dark:text-foreground hover:bg-indigo-50 dark:hover:bg-accent"
                   >
                     <X className="h-4 w-4 mr-1" />
                     Decline

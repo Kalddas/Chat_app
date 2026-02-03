@@ -2,9 +2,11 @@ import { Button } from "@/components/ui/button";
 import { hero } from "../Assets/assets";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Sparkles, Users, MessageCircle, ArrowRight } from "lucide-react";
+import { Sparkles, Users } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const Hero = () => {
+    const { t } = useTranslation();
     return (
         <section className="relative bg-gradient-to-br from-[var(--gradient-from)] to-[var(--gradient-to)] py-16 lg:py-24 overflow-hidden">
             {/* Animated background elements */}
@@ -25,18 +27,18 @@ const Hero = () => {
                         >
                             <div className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 text-white text-sm font-medium backdrop-blur-sm">
                                 <Sparkles className="w-4 h-4 mr-1" />
-                                Connect through shared passions
+                                {t("home.heroTagline")}
                             </div>
 
-                            <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight">
-                                Build Meaningful
+                            <h1 className="text-4xl lg:text-5xl xl- text-6xl font-bold text-white leading-tight">
+                                {t("home.heroTitle1")}
                                 <br />
                                 <span className="bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
-                                    Connections
+                                    {t("home.heroTitle2")}
                                 </span>
                             </h1>
                             <p className="text-lg text-indigo-200 max-w-xl">
-                                Discover like-minded individuals who share your interests and build meaningful connections that last. Join our community of passionate people ready to explore new horizons together.
+                                {t("home.heroSubtitle")}
                             </p>
                         </motion.div>
 
@@ -51,8 +53,7 @@ const Hero = () => {
                                 className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-3 text-base font-semibold rounded-full shadow-lg shadow-indigo-500/30 hover:shadow-indigo-600/40 transition-all duration-300 group"
                             >
                                 <Link to='/register' className="flex items-center">
-                                    Get Started
-                                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                                    {t("home.heroGetStarted")}
                                 </Link>
                             </Button>
                             <div className="flex items-center space-x-2 bg-white/5 backdrop-blur-sm rounded-full px-4 py-2">
@@ -61,7 +62,7 @@ const Hero = () => {
                                 </div>
                                 <div>
                                     <div className="text-xl font-bold text-white">2.3M+</div>
-                                    <div className="text-sm text-indigo-200">Active Users</div>
+                                    <div className="text-sm text-indigo-200">{t("home.heroActiveUsers")}</div>
                                 </div>
                             </div>
                         </motion.div>

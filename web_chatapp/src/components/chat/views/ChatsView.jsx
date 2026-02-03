@@ -1,16 +1,19 @@
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { getMoodEmoji, isMoodFresh } from "@/lib/mood";
 import { useGetAllConversationsQuery } from "../../../services/chatService";
 import { useWebSocket } from "../../../contexts/WebSocketContext";
 import { useChatsContext } from "../../../contexts/ChatsContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function ChatsView({ searchQuery, selectedChat, onChatSelect }) {
+  const { t } = useTranslation();
+  const { user } = useAuth();
   const { onlineUsers, connectionState } = useWebSocket();
-  const localUser = localStorage.getItem("user");
-  const parsedUser = localUser ? JSON.parse(localUser) : null;
-  const userId = parsedUser?.id;
+  const userId = user?.id;
 
   const { refreshTrigger } = useChatsContext();
   const {
@@ -41,16 +44,23 @@ export function ChatsView({ searchQuery, selectedChat, onChatSelect }) {
 
   const chats = data?.conversations?.map(chat => {
     const otherUser = chat.user;
+    const mood = otherUser?.mood ?? null;
+    const moodUpdatedAt = otherUser?.mood_updated_at ?? null;
+    const moodEmoji = mood && isMoodFresh(moodUpdatedAt) ? getMoodEmoji(mood) : null;
     return {
       id: chat.conversation_id,
       name: `${otherUser?.first_name ?? ''} ${otherUser?.last_name ?? ''}`.trim() || (otherUser?.user_name ?? 'Unknown'),
       username: otherUser?.user_name ?? '',
       avatar: otherUser?.profile_picture_url || "/placeholder.svg",
+      bio: otherUser?.bio || "",
       lastMessage: chat.last_message ? (chat.last_message.message || "") : "No messages yet",
       timestamp: chat.last_message?.sent_at || chat.last_message_time,
       unreadCount: chat.unread_count || 0,
       isOnline: onlineUsers?.has(otherUser?.id),
       userId: otherUser?.id,
+      mood,
+      moodUpdatedAt,
+      moodEmoji,
     };
   }) || [];
 
@@ -74,11 +84,13 @@ export function ChatsView({ searchQuery, selectedChat, onChatSelect }) {
   return (
     <div className="overflow-y-auto h-full">
       {isLoading ? (
-        <div className="p-4 text-center text-indigo-600 dark:text-muted-foreground">Loading chats...</div>
+        <div className="p-4 text-center text-indigo-600 dark:text-muted-foreground">{t("common.loading")}</div>
       ) : isError ? (
-        <div className="p-4 text-center text-red-500 dark:text-red-400">Failed to load chats</div>
+        <div className="p-4 text-center text-red-500 dark:text-red-400">{t("chat.failedToLoadChats")}</div>
       ) : filteredChats.length === 0 ? (
-        <div className="p-4 text-center text-indigo-600 dark:text-muted-foreground">No chats found</div>
+        <div className="p-4 text-center text-indigo-600 dark:text-muted-foreground">
+          {searchQuery ? t("common.noResults") : t("chat.noConversations")}
+        </div>
       ) : (
         <div className="divide-y divide-indigo-200 dark:divide-border">
           {filteredChats.map(chat => (
@@ -96,6 +108,14 @@ export function ChatsView({ searchQuery, selectedChat, onChatSelect }) {
                     <AvatarImage src={chat.avatar} alt={chat.name} />
                     <AvatarFallback className="bg-indigo-100 dark:bg-card text-indigo-700 dark:text-foreground">{chat.name.charAt(0)}</AvatarFallback>
                   </Avatar>
+                  {chat.moodEmoji && (
+                    <div
+                      className="absolute -bottom-1 -left-1 h-6 w-6 rounded-full bg-white dark:bg-card border border-indigo-200 dark:border-white/30 flex items-center justify-center text-sm shadow-sm"
+                      title={chat.mood}
+                    >
+                      {chat.moodEmoji}
+                    </div>
+                  )}
                   {chat.isOnline && connectionState === "connected" && (
                     <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-background"></div>
                   )}

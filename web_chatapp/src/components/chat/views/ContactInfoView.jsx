@@ -1,49 +1,56 @@
 import { useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Phone, Video, Bell, Lock, Trash2, Loader2, PhoneCall } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useGetUserProfileQuery } from "../../../services/userService"
-import { useDeleteConversationMutation } from "../../../services/chatService"
+import { useDeleteConversationMutation, useBlockUserMutation } from "../../../services/chatService"
 import { useWebSocket } from "../../../contexts/WebSocketContext"
 import { useChatsContext } from "../../../contexts/ChatsContext"
+import { toast } from "react-toastify"
 
 export function ContactInfoView({ chatId, selectedChatInfo }) {
+  const { t } = useTranslation()
   const [deleteConversation, { isLoading: deleting }] = useDeleteConversationMutation()
+  const [blockUser, { isLoading: blocking }] = useBlockUserMutation()
   const [muteNotifications, setMuteNotifications] = useState(false)
   const [disappearingMessages, setDisappearingMessages] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [showCallDialog, setShowCallDialog] = useState(false)
   const [callType, setCallType] = useState(null) // 'video' | 'voice'
+  const [isBlocked, setIsBlocked] = useState(false)
   const videoRef = useRef(null)
   const localStreamRef = useRef(null)
   const callTimeoutRef = useRef(null)
 
   // Get current user profile
   const { data: currentUserProfile, isLoading: currentUserLoading } = useGetUserProfileQuery()
-  console.log(currentUserProfile)
   const { onlineUsers, connectionState } = useWebSocket()
   const { triggerChatsRefresh } = useChatsContext()
 
   // Use selectedChatInfo if available, otherwise fallback to mock data
   const contact = selectedChatInfo ? {
-    name: selectedChatInfo.name,
+    name: selectedChatInfo.name ?? t('errors.notFound'),
     subtitle: `@${selectedChatInfo.username}`,
     avatar: selectedChatInfo.avatar,
     phone: "", // Add phone field to your API if needed
-    about: "No bio available", // Add bio field to your API if needed
+    about: selectedChatInfo.bio && selectedChatInfo.bio.trim().length > 0
+      ? selectedChatInfo.bio
+      : t('profile.noBioAvailable'),
     lastSeen: (onlineUsers && typeof onlineUsers.has === 'function' && selectedChatInfo?.userId)
       ? (onlineUsers.has(selectedChatInfo.userId) ? "online" : "offline")
       : "offline",
     userId: selectedChatInfo.userId
   } : {
-    name: "Unknown User",
-    subtitle: "User not found",
+    name: t('errors.notFound'),
+    subtitle: t('errors.notFound'),
     avatar: "/placeholder.svg",
     phone: "",
-    about: "No information available",
+    about: t('profile.noBioAvailable'),
     lastSeen: "offline",
     userId: null
   }
@@ -64,7 +71,7 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
         }
       } catch (err) {
         console.error("Failed to start video call:", err)
-        alert("Could not access your camera/microphone. Please check permissions.")
+        alert(t('errors.mediaAccess'))
         setShowCallDialog(false)
         setCallType(null)
       }
@@ -132,6 +139,19 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
     }
   }
 
+  const handleBlockContact = async () => {
+    if (!contact.userId) return
+    try {
+      await blockUser({ userId: contact.userId }).unwrap()
+      setIsBlocked(true)
+      toast.success(t('chat.blockSuccess'))
+    } catch (err) {
+      console.error("Block contact failed", err)
+      const msg = err?.data?.error || err?.data?.message || t('errors.failedToBlock')
+      toast.error(msg)
+    }
+  }
+
   // No ringtone or timeout cleanup needed now
 
   if (currentUserLoading) {
@@ -146,14 +166,14 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
     <>
     <div className="h-full overflow-y-auto bg-background dark:bg-background">
       {/* Contact Header */}
-      <div className="p-6 text-center border-b border-indigo-200 dark:border-border bg-card dark:bg-card">
-        <Avatar className="w-24 h-24 mx-auto mb-4 border-4 border-indigo-100 dark:border-border">
+      <div className="p-6 text-center border-b border-indigo-200 dark:border-white/30 bg-card dark:bg-card">
+        <Avatar className="w-24 h-24 mx-auto mb-4 border-4 border-indigo-100 dark:border-white/30">
           <AvatarImage src={contact.avatar || "/placeholder.svg"} alt={contact.name} />
           <AvatarFallback className="text-2xl bg-indigo-100 dark:bg-card text-indigo-700 dark:text-foreground">
-            {contact.name
+            {(contact.name || "")
               .split(" ")
               .map((n) => n[0])
-              .join("")}
+              .join("") || "?"}
           </AvatarFallback>
         </Avatar>
 
@@ -163,7 +183,7 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
           <div className={`w-2 h-2 rounded-full ${contact.lastSeen === 'online' ? 'bg-green-500' : 'bg-indigo-300 dark:bg-muted-foreground'
             }`}></div>
           <p className="text-xs text-indigo-600 dark:text-muted-foreground">
-            {contact.lastSeen === 'online' ? 'Online' : 'Offline'}
+            {contact.lastSeen === 'online' ? t('common.online') : t('common.offline')}
           </p>
         </div>
 
@@ -175,117 +195,148 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
             onClick={() => startCall("video")}
           >
             <Video className="h-4 w-4" />
-            Video
+            {t('chat.video')}
           </Button>
           <Button
             size="sm"
             variant="outline"
-            className="flex items-center gap-2 border-indigo-300 dark:border-border text-indigo-700 dark:text-foreground hover:bg-indigo-50 dark:hover:bg-accent"
+            className="flex items-center gap-2 border-indigo-300 dark:border-white/30 text-indigo-700 dark:text-foreground hover:bg-indigo-50 dark:hover:bg-accent"
             onClick={() => startCall("voice")}
           >
             <Phone className="h-4 w-4" />
-            Voice
+            {t('chat.voice')}
           </Button>
         </div>
       </div>
 
-      {/* Contact Details */}
-      <div className="p-4 space-y-6">
-        {/* About */}
-        <div>
-          <h4 className="text-sm font-medium text-indigo-700 dark:text-muted-foreground mb-2">About</h4>
-          <p className="text-sm text-indigo-900 dark:text-foreground">{contact.about}</p>
-        </div>
-
-        {/* Phone Number */}
-        {contact.phone && (
-          <div>
-            <h4 className="text-sm font-medium text-indigo-700 dark:text-muted-foreground mb-2">Phone number</h4>
-            <p className="text-sm text-indigo-900 dark:text-foreground">{contact.phone}</p>
-          </div>
-        )}
-
-        <Separator className="bg-indigo-200 dark:bg-border" />
-
-        {/* Media, Files, Links */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between py-2">
-            <span className="text-sm text-indigo-900 dark:text-foreground">Media, links and docs</span>
-            <span className="text-sm text-indigo-600 dark:text-muted-foreground">142 &gt;</span>
-          </div>
-        </div>
-
-        <Separator className="bg-indigo-200 dark:bg-border" />
-
-        {/* Notifications */}
-        <div className="flex items-center justify-between py-2">
-          <div className="flex items-center gap-3">
-            <Bell className="h-4 w-4 text-indigo-600 dark:text-primary" />
-            <span className="text-sm text-indigo-900 dark:text-foreground">Mute notifications</span>
-          </div>
-          <Switch
-            checked={muteNotifications}
-            onCheckedChange={setMuteNotifications}
-            className="data-[state=checked]:bg-primary"
-          />
-        </div>
-
-        {/* Disappearing Messages */}
-        <div>
-          <div className="flex items-center justify-between py-2">
-            <span className="text-sm text-indigo-900 dark:text-foreground">Disappearing messages</span>
-            <span className="text-sm text-indigo-600 dark:text-muted-foreground">Off</span>
-          </div>
-          <p className="text-xs text-indigo-600 dark:text-muted-foreground mt-1">
-            Messages will disappear from this chat after the selected duration.
-          </p>
-        </div>
-
-        {/* Encryption */}
-        <div className="flex items-center justify-between py-2">
-          <div className="flex items-center gap-3">
-            <Lock className="h-4 w-4 text-indigo-600 dark:text-primary" />
+      {/* Contact Details & Settings-style sections */}
+      <div className="p-4 space-y-4">
+        <Card className="border-indigo-200 dark:border-white/30 dark:bg-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-indigo-900 dark:text-foreground">
+              {t('profile.contactInfo')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-0">
+            {/* About */}
             <div>
-              <div className="text-sm text-indigo-900 dark:text-foreground">Encryption</div>
-              <div className="text-xs text-indigo-600 dark:text-muted-foreground">Messages are end-to-end encrypted</div>
+              <h4 className="text-xs font-medium text-indigo-700 dark:text-muted-foreground mb-1">{t('profile.about')}</h4>
+              <p className="text-sm text-indigo-900 dark:text-foreground break-words">{contact.about}</p>
             </div>
-          </div>
-        </div>
 
-        <Separator className="bg-indigo-200 dark:bg-border" />
+            {/* Phone Number */}
+            {contact.phone && (
+              <>
+                <Separator className="bg-indigo-200 dark:bg-white/30" />
+                <div>
+                  <h4 className="text-xs font-medium text-indigo-700 dark:text-muted-foreground mb-1">{t('profile.phoneNumber')}</h4>
+                  <p className="text-sm text-indigo-900 dark:text-foreground">{contact.phone}</p>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
-        {/* Danger Zone */}
-        <div className="space-y-3">
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30"
-            onClick={() => setShowConfirm(true)}
-            disabled={deleting}
-          >
-            <Trash2 className="h-4 w-4 mr-3" />
-            {deleting ? "Deleting..." : "Delete chat"}
-          </Button>
+        <Card className="border-indigo-200 dark:border-white/30 dark:bg-card">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold text-indigo-900 dark:text-foreground">
+            {t('settings.privacySecurity')}
+          </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-0">
+            {/* Media, Files, Links */}
+            <div className="flex items-center justify-between py-1">
+              <span className="text-sm text-indigo-900 dark:text-foreground">{t('chat.mediaLinksAndDocs')}</span>
+              <span className="text-sm text-indigo-600 dark:text-muted-foreground">142 &gt;</span>
+            </div>
 
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30"
-          >
-            Block contact
-          </Button>
-        </div>
+            <Separator className="bg-indigo-200 dark:bg-white/30" />
+
+            {/* Notifications */}
+            <div className="flex items-center justify-between py-1">
+              <div className="flex items-center gap-3">
+                <Bell className="h-4 w-4 text-indigo-600 dark:text-primary" />
+                <span className="text-sm text-indigo-900 dark:text-foreground">{t('chat.muteNotifications')}</span>
+              </div>
+              <Switch
+                checked={muteNotifications}
+                onCheckedChange={setMuteNotifications}
+                className="data-[state=checked]:bg-primary"
+              />
+            </div>
+
+            <Separator className="bg-indigo-200 dark:bg-white/30" />
+
+            {/* Disappearing Messages */}
+            <div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-sm text-indigo-900 dark:text-foreground">{t('chat.disappearingMessages')}</span>
+                <span className="text-sm text-indigo-600 dark:text-muted-foreground">{t('common.off')}</span>
+              </div>
+              <p className="text-xs text-indigo-600 dark:text-muted-foreground mt-1">
+                {t('chat.disappearingMessagesDesc')}
+              </p>
+            </div>
+
+            <Separator className="bg-indigo-200 dark:bg-white/30" />
+
+            {/* Encryption */}
+            <div className="flex items-center justify-between py-1">
+              <div className="flex items-center gap-3">
+                <Lock className="h-4 w-4 text-indigo-600 dark:text-primary" />
+                <div>
+                  <div className="text-sm text-indigo-900 dark:text-foreground">{t('chat.encryption')}</div>
+                  <div className="text-xs text-indigo-600 dark:text-muted-foreground">
+                    {t('chat.encryptionDesc')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-900/20">
+            <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-red-700 dark:text-red-300">
+              {t('settings.dangerZone')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-0">
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30"
+              onClick={() => setShowConfirm(true)}
+              disabled={deleting}
+            >
+              <Trash2 className="h-4 w-4 mr-3" />
+              {deleting ? t('common.loading') : t('chat.deleteChat')}
+            </Button>
+
+            <Separator className="bg-red-200 dark:bg-red-800" />
+
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30"
+              onClick={handleBlockContact}
+              disabled={blocking || isBlocked}
+            >
+              {isBlocked ? t('chat.blocked') : blocking ? t('chat.blocking') : t('chat.blockContact')}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
     <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
-      <DialogContent className="bg-card dark:bg-card dark:border-border">
+      <DialogContent className="bg-card dark:bg-card dark:border-white/30">
         <DialogHeader>
-          <DialogTitle>Delete this chat?</DialogTitle>
+          <DialogTitle>{t('chat.chatDeleteConfirm')}</DialogTitle>
           <DialogDescription>
-            This action will permanently remove this conversation and all its messages. This cannot be undone.
+            {t('chat.chatDeleteDesc')}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => setShowConfirm(false)} disabled={deleting}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button variant="destructive" onClick={handleDeleteChat} disabled={deleting}>
             {deleting ? "Deleting..." : "Delete"}
@@ -296,12 +347,12 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
 
     {/* Call dialog (local preview + ringtone) */}
     <Dialog open={showCallDialog} onOpenChange={(open) => !open && endCall()}>
-      <DialogContent className="bg-card dark:bg-card dark:border-border max-w-sm">
+      <DialogContent className="bg-card dark:bg-card dark:border-white/30 max-w-sm">
         {callType === "video" ? (
           <>
             <DialogHeader>
-              <DialogTitle>Video calling {contact.name}</DialogTitle>
-              <DialogDescription>Connecting video and audio...</DialogDescription>
+              <DialogTitle>{t('chat.videoCall')} {contact.name}</DialogTitle>
+              <DialogDescription>{t('chat.connectingVideo')}</DialogDescription>
             </DialogHeader>
             <div className="mt-4 flex justify-center">
               <video
@@ -315,22 +366,22 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Voice calling {contact.name}</DialogTitle>
-              <DialogDescription>Ringing...</DialogDescription>
+              <DialogTitle>{t('chat.voiceCall')} {contact.name}</DialogTitle>
+              <DialogDescription>{t('chat.ringing')}</DialogDescription>
             </DialogHeader>
             <div className="flex flex-col items-center justify-center py-6 space-y-4">
               <Avatar className="h-20 w-20 border-4 border-indigo-200">
                 <AvatarImage src={contact.avatar || "/placeholder.svg"} alt={contact.name} />
                 <AvatarFallback className="text-2xl bg-indigo-100 text-indigo-700">
-                  {contact.name
+                  {(contact.name || "")
                     .split(" ")
                     .map((n) => n[0])
-                    .join("")}
+                    .join("") || "?"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex items-center gap-2 text-indigo-700 dark:text-foreground">
                 <PhoneCall className="h-5 w-5 animate-pulse" />
-                <span>Calling...</span>
+                <span>{t('chat.calling')}</span>
               </div>
             </div>
           </>
@@ -338,7 +389,7 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
 
         <DialogFooter className="mt-2 flex justify-center">
           <Button variant="destructive" onClick={endCall} className="w-full">
-            End call
+            {t('chat.endCall')}
           </Button>
         </DialogFooter>
       </DialogContent>
