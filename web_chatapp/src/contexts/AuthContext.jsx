@@ -16,6 +16,13 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(null)
     const [isLoading, setIsLoading] = useState(false)
 
+    const clearAuthStorage = () => {
+        localStorage.removeItem("user")
+        localStorage.removeItem("token")
+        // Legacy/demo key used elsewhere in the repo; clear to avoid stale UI if referenced
+        localStorage.removeItem("chatapp-user")
+    }
+
     useEffect(() => {
         // Load user & token from localStorage on app start
         const storedUser = localStorage.getItem("user")
@@ -37,8 +44,7 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         setUser(null)
         setToken(null)
-        localStorage.removeItem("user")
-        localStorage.removeItem("token")
+        clearAuthStorage()
     }
 
     const updateUser = (updatedUser) => {

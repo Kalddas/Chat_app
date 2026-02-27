@@ -23,11 +23,16 @@ import { useLogoutMutation } from "../../services/authService"
 import { useNavigate } from "react-router-dom"
 
 export function AdminSidebar({ currentView, onViewChange }) {
-  const { data: profile, isLoading, error } = useGetUserProfileQuery()
+  const { user, logout } = useAuth()
+  const { data: profileData, isLoading, error } = useGetUserProfileQuery()
+  const rawProfile = profileData?.profile
+  const profile =
+    rawProfile && user?.id && (rawProfile.user_id === user.id || rawProfile.id === user.id)
+      ? rawProfile
+      : null
   const [showProfileDialog, setShowProfileDialog] = useState(false)
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const [logoutApi, { isLoading: isLoggingOut }] = useLogoutMutation();
-  const { user, logout } = useAuth()
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -65,21 +70,21 @@ export function AdminSidebar({ currentView, onViewChange }) {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8 bg-indigo-100 dark:bg-card border-2 border-indigo-200 dark:border-white/30" key={profile?.profile?.profile_picture_url || 'no-image'}>
+            <Avatar className="h-8 w-8 bg-indigo-100 dark:bg-card border-2 border-indigo-200 dark:border-white/30" key={profile?.profile_picture_url || 'no-image'}>
               <AvatarImage 
                 src={
-                  profile?.profile?.profile_picture_url 
-                    ? `${profile.profile.profile_picture_url}${profile.profile.profile_picture_url.includes('?') ? '&' : '?'}t=${Date.now()}` 
+                  profile?.profile_picture_url 
+                    ? `${profile.profile_picture_url}${profile.profile_picture_url.includes('?') ? '&' : '?'}t=${Date.now()}` 
                     : "/placeholder.svg"
                 } 
-                alt={profile?.profile?.first_name}
+                alt={profile?.first_name}
                 onError={(e) => {
                   console.error("Avatar image load error:", e.target.src);
                   e.target.src = "/placeholder.svg";
                 }}
               />
               <AvatarFallback className="text-indigo-700 dark:text-foreground">
-                {profile?.profile?.first_name?.charAt(0)}
+                {profile?.first_name?.charAt(0)}
               </AvatarFallback>
             </Avatar>
             {isLoading ? (
@@ -88,7 +93,7 @@ export function AdminSidebar({ currentView, onViewChange }) {
               </p>
             ) : (
               <p className="text-indigo-900 dark:text-foreground">
-                {profile?.profile?.first_name} {profile?.profile?.last_name}
+                {profile?.first_name} {profile?.last_name}
               </p>
             )}
           </div>
@@ -195,36 +200,36 @@ export function AdminSidebar({ currentView, onViewChange }) {
           </DialogHeader>
 
           <div className="flex flex-col items-center gap-4 p-4">
-            <Avatar className="h-16 w-16 border-2 border-indigo-200 dark:border-white/30" key={profile?.profile?.profile_picture_url || 'no-image'}>
+            <Avatar className="h-16 w-16 border-2 border-indigo-200 dark:border-white/30" key={profile?.profile_picture_url || 'no-image'}>
               <AvatarImage 
                 src={
-                  profile?.profile?.profile_picture_url 
-                    ? `${profile.profile.profile_picture_url}${profile.profile.profile_picture_url.includes('?') ? '&' : '?'}t=${Date.now()}` 
+                  profile?.profile_picture_url 
+                    ? `${profile.profile_picture_url}${profile.profile_picture_url.includes('?') ? '&' : '?'}t=${Date.now()}` 
                     : "/placeholder.svg"
                 } 
-                alt={profile?.profile?.first_name}
+                alt={profile?.first_name}
                 onError={(e) => {
                   console.error("Avatar image load error:", e.target.src);
                   e.target.src = "/placeholder.svg";
                 }}
               />
               <AvatarFallback className="bg-indigo-100 dark:bg-card text-indigo-700 dark:text-foreground">
-                {profile?.profile?.first_name?.charAt(0)}
-                {profile?.profile?.last_name?.charAt(0)}
+                {profile?.first_name?.charAt(0)}
+                {profile?.last_name?.charAt(0)}
               </AvatarFallback>
             </Avatar>
             <div className="text-center space-y-1">
               <p className="text-lg font-semibold text-indigo-900 dark:text-foreground">
-                {profile?.profile?.first_name} {profile?.profile?.last_name}
+                {profile?.first_name} {profile?.last_name}
               </p>
               <p className="text-sm text-indigo-600 dark:text-muted-foreground">
-                @{profile?.profile?.user_name}
+                @{profile?.user_name}
               </p>
               <p className="text-sm text-indigo-600 dark:text-muted-foreground">
-                {profile?.profile?.phone}
+                {profile?.phone}
               </p>
               <p className="text-sm text-indigo-600 dark:text-muted-foreground">
-                {profile?.profile?.bio}
+                {profile?.bio}
               </p>
             </div>
           </div>

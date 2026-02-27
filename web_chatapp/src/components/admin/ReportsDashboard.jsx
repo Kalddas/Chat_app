@@ -25,6 +25,11 @@ export function ReportsDashboard() {
   const reports = reportsData?.recent_reports || [];
   const [updateReportStatus] = useUpdateReportStatusMutation();
 
+  const getInitial = (name, fallback) => {
+    const n = (name || "").trim();
+    return n ? n.charAt(0).toUpperCase() : fallback;
+  };
+
   const handleViewReport = (report) => {
     setSelectedReport(report);
     setAdminMessage("");
@@ -113,15 +118,27 @@ export function ReportsDashboard() {
                         }}
                       />
                       <AvatarFallback>
-                        {report.reporter?.profile?.first_name?.charAt(0) || 'R'}
+                        {getInitial(report.reporter?.name || report.reporter?.email, "R")}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <CardTitle className="text-lg">
-                        Report #{report.id}
+                        {report.reported_user?.name || report.reported_user?.email || `Report #${report.id}`}
                       </CardTitle>
-                      <CardDescription>
-                        Reported by {report.reporter?.name || report.reporter?.email || 'Unknown'}
+                      <CardDescription className="flex items-center gap-2 flex-wrap">
+                        <span>
+                          Reported by {(report.reporter?.name || "").trim() || report.reporter?.email || "Unknown"}
+                        </span>
+                        {report.report_count > 1 && (
+                          <Badge variant="secondary">
+                            {report.report_count} reports
+                          </Badge>
+                        )}
+                        {report.auto_suspended && (
+                          <Badge variant="secondary" className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                            Auto-suspended
+                          </Badge>
+                        )}
                       </CardDescription>
                     </div>
                   </div>
@@ -140,10 +157,6 @@ export function ReportsDashboard() {
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-gray-700 dark:text-foreground">Title:</span>
-                    <span className="text-sm text-gray-600 dark:text-muted-foreground">{report.title}</span>
-                  </div>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-medium text-gray-700 dark:text-foreground">Reported User:</span>
                     <span className="text-sm text-gray-600 dark:text-muted-foreground">
@@ -189,11 +202,11 @@ export function ReportsDashboard() {
                         }}
                       />
                       <AvatarFallback>
-                        {selectedReport.reporter?.profile?.first_name?.charAt(0) || 'R'}
+                        {getInitial(selectedReport.reporter?.name, "R")}
                       </AvatarFallback>
                     </Avatar>
                     <span className="text-sm text-gray-600 dark:text-muted-foreground">
-                      {selectedReport.reporter?.profile?.first_name} {selectedReport.reporter?.profile?.last_name}
+                      {selectedReport.reporter?.name || selectedReport.reporter?.email || "Unknown"}
                     </span>
                   </div>
                 </div>
@@ -209,14 +222,40 @@ export function ReportsDashboard() {
                         }}
                       />
                       <AvatarFallback>
-                        {selectedReport.reported_user?.profile?.first_name?.charAt(0) || 'U'}
+                        {getInitial(selectedReport.reported_user?.name, "U")}
                       </AvatarFallback>
                     </Avatar>
                     <span className="text-sm text-gray-600 dark:text-muted-foreground">
-                      {selectedReport.reported_user?.profile?.first_name} {selectedReport.reported_user?.profile?.last_name}
+                      {selectedReport.reported_user?.name || selectedReport.reported_user?.email || "Unknown"}
                     </span>
                   </div>
                 </div>
+              </div>
+              
+              {/* Summary of how many times and by whom */}
+              <div>
+                <h4 className="font-semibold text-gray-900 dark:text-foreground mb-2">Report Summary</h4>
+                <p className="text-sm text-gray-700 dark:text-foreground mb-1">
+                  Reported{" "}
+                  <span className="font-semibold">
+                    {selectedReport.report_count || 1}
+                  </span>{" "}
+                  time{(selectedReport.report_count || 1) > 1 ? "s" : ""}.
+                </p>
+                {Array.isArray(selectedReport.reporters) && selectedReport.reporters.length > 0 && (
+                  <div className="mt-1">
+                    <p className="text-xs font-medium text-gray-700 dark:text-foreground mb-1">
+                      Reported by:
+                    </p>
+                    <ul className="text-sm text-gray-600 dark:text-muted-foreground list-disc list-inside space-y-0.5">
+                      {selectedReport.reporters.map((r) => (
+                        <li key={r.id}>
+                          {r.name} <span className="text-xs text-gray-500">({r.email})</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
               
               <div>

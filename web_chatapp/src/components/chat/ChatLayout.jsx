@@ -29,7 +29,11 @@ export function ChatLayout() {
   const { data: profileData, isSuccess: profileLoaded, refetch: refetchProfile } = useGetUserProfileQuery(undefined, {
     skip: !user?.id,
   })
-  const profile = profileData?.profile
+  const rawProfile = profileData?.profile
+  const profile =
+    rawProfile && user?.id && (rawProfile.user_id === user.id || rawProfile.id === user.id)
+      ? rawProfile
+      : null
 
   // Show mood prompt after login / every 24h based on last-shown timestamp
   useEffect(() => {

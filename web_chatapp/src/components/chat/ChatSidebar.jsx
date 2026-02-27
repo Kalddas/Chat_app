@@ -45,7 +45,11 @@ export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSel
   } = useGetUserProfileQuery(undefined, {
     refetchOnMountOrArgChange: true,
   })
-  const profile = profileData?.profile
+  const rawProfile = profileData?.profile
+  const profile =
+    rawProfile && user?.id && (rawProfile.user_id === user.id || rawProfile.id === user.id)
+      ? rawProfile
+      : null
 
   // Fetch conversations to get unread message count
   const {

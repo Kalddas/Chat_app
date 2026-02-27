@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useGetUserProfileQuery } from "../../../services/userService"
-import { useDeleteConversationMutation, useBlockUserMutation } from "../../../services/chatService"
+import { useDeleteConversationMutation, useBlockUserMutation, useUnblockUserMutation } from "../../../services/chatService"
 import { useWebSocket } from "../../../contexts/WebSocketContext"
 import { useChatsContext } from "../../../contexts/ChatsContext"
 import { toast } from "react-toastify"
@@ -17,6 +17,7 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
   const { t } = useTranslation()
   const [deleteConversation, { isLoading: deleting }] = useDeleteConversationMutation()
   const [blockUser, { isLoading: blocking }] = useBlockUserMutation()
+  const [unblockUser, { isLoading: unblocking }] = useUnblockUserMutation()
   const [muteNotifications, setMuteNotifications] = useState(false)
   const [disappearingMessages, setDisappearingMessages] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -142,11 +143,29 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
   const handleBlockContact = async () => {
     if (!contact.userId) return
     try {
-      await blockUser({ userId: contact.userId }).unwrap()
-      setIsBlocked(true)
-      toast.success(t('chat.blockSuccess'))
+      if (isBlocked) {
+        await unblockUser({ userId: contact.userId }).unwrap()
+        setIsBlocked(false)
+        toast.success(t('chat.unblockContact'))
+        // Inform ChatMain that WE no longer block this user
+        if (chatId) {
+          window.dispatchEvent(new CustomEvent("chat:blockStateChange", {
+            detail: { conversationId: chatId, blockedByMe: false },
+          }))
+        }
+      } else {
+        await blockUser({ userId: contact.userId }).unwrap()
+        setIsBlocked(true)
+        toast.success(t('chat.blockSuccess'))
+        // Inform ChatMain that WE now block this user
+        if (chatId) {
+          window.dispatchEvent(new CustomEvent("chat:blockStateChange", {
+            detail: { conversationId: chatId, blockedByMe: true },
+          }))
+        }
+      }
     } catch (err) {
-      console.error("Block contact failed", err)
+      console.error("Block/unblock contact failed", err)
       const msg = err?.data?.error || err?.data?.message || t('errors.failedToBlock')
       toast.error(msg)
     }
@@ -318,9 +337,9 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
               variant="ghost"
               className="w-full justify-start text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30"
               onClick={handleBlockContact}
-              disabled={blocking || isBlocked}
+              disabled={blocking || unblocking}
             >
-              {isBlocked ? t('chat.blocked') : blocking ? t('chat.blocking') : t('chat.blockContact')}
+              {isBlocked ? t('chat.unblockContact') : (blocking ? t('chat.blocking') : t('chat.blockContact'))}
             </Button>
           </CardContent>
         </Card>

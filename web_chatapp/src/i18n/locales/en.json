@@ -175,6 +175,7 @@
     "blocked": "Blocked",
     "blockedMessage": "This user has blocked you. Any more messages will not be sent.",
     "userBlocked": "User is blocked. You cannot send messages in this chat.",
+    "blockedByYouMessage": "You have blocked this user. Any more messages will not be sent.",
     "muteNotifications": "Mute notifications",
     "disappearingMessages": "Disappearing messages",
     "disappearingMessagesDesc": "Messages will disappear from this chat after the selected duration.",

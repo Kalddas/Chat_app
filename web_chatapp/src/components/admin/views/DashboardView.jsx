@@ -93,22 +93,40 @@ export function DashboardView() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {data?.recent_active_users?.map((user, index) => (
-              <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-indigo-50 dark:bg-card dark:border dark:border-white/30">
-                <div>
-                  <p className="font-medium text-indigo-900 dark:text-foreground">
-                    {user.first_name} {user.last_name}
-                  </p>
-                  <p className="text-sm text-indigo-600 dark:text-muted-foreground">{user.email}</p>
+          {Array.isArray(data?.recent_users) && data.recent_users.length > 0 ? (
+            <div className="space-y-4">
+              {data.recent_users.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-indigo-50 dark:bg-card dark:border dark:border-white/30"
+                >
+                  <div>
+                    <p className="font-medium text-indigo-900 dark:text-foreground">
+                      {user.first_name} {user.last_name}
+                    </p>
+                    <p className="text-sm text-indigo-600 dark:text-muted-foreground">
+                      {user.email}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <Badge
+                      variant="default"
+                      className="mb-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300"
+                    >
+                      active
+                    </Badge>
+                    <p className="text-xs text-indigo-600 dark:text-muted-foreground">
+                      {user.last_login_human || user.last_login_at || "—"}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <Badge variant="default" className="mb-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">active</Badge>
-                  <p className="text-xs text-indigo-600 dark:text-muted-foreground">{user.last_active}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-indigo-600 dark:text-muted-foreground">
+              No recent users yet. They’ll appear here after logging in.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

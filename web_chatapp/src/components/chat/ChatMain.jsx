@@ -58,7 +58,12 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
   const { data: profileData } = useGetUserProfileQuery(undefined, {
     skip: !user,
   });
-  const profile = profileData?.profile || user;
+  // Avoid showing a cached previous-user profile during fast logout/login transitions
+  const profile =
+    profileData?.profile?.id && user?.id && profileData.profile.id === user.id
+      ? profileData.profile
+      : user;
+  const isLiveFlowChat = selectedChatInfo?.name === "LiveFlow";
 
   const messagesEndRef = useRef(null);
   const [newMessage, setNewMessage] = useState("");
@@ -74,8 +79,9 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const fileInputRef = useRef(null);
-  const [messageToDelete, setMessageToDelete] = useState(null);
-  const [isBlocked, setIsBlocked] = useState(false);
+  const [messageToDelete, setMessageToDelete] = useState(null); // { id?, clientId? }
+  const [blockedByMe, setBlockedByMe] = useState(false);     // I have blocked the other user
+  const [blockedByOther, setBlockedByOther] = useState(false); // the other user has blocked me
 
   const {
     messages: wsMessages,
@@ -152,9 +158,11 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiMessages, wsMessages, selectedChat]);
 
-  // Join/leave conversation
+  // Join/leave conversation and reset block flags when switching chats
   useEffect(() => {
     if (selectedChat && isConnected) joinConversation(selectedChat);
+    setBlockedByMe(false);
+    setBlockedByOther(false);
     return () => {
       if (selectedChat) leaveConversation(selectedChat);
     };
@@ -171,8 +179,6 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
       const { conversationId, type, timestamp } = e.detail || {};
       if (!conversationId || conversationId !== selectedChat) return;
 
-      const storedUser = localStorage.getItem("user");
-      const user = storedUser ? JSON.parse(storedUser) : null;
       const systemText =
         type === "video"
           ? "You attempted a video call."
@@ -194,29 +200,52 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
     return () => window.removeEventListener("chat:callAttempt", handler);
   }, [selectedChat]);
 
+  // Listen for block/unblock events from ContactInfoView so we know when WE blocked/unblocked the user
+  useEffect(() => {
+    const handler = (e) => {
+      const { conversationId, blockedByMe: isBlockedByMe } = e.detail || {};
+      if (!conversationId || conversationId !== selectedChat) return;
+      setBlockedByMe(!!isBlockedByMe);
+    };
+
+    window.addEventListener("chat:blockStateChange", handler);
+    return () => window.removeEventListener("chat:blockStateChange", handler);
+  }, [selectedChat]);
+
   const ownAvatarUrl = useMemo(() => {
     const src = profile?.profile_picture_url || user?.profile_picture_url;
     if (!src) return null;
     return `${src}${src.includes('?') ? '&' : '?'}t=${profileData?.timestamp || 'initial'}`;
   }, [profile?.profile_picture_url, user?.profile_picture_url, profileData?.timestamp]);
 
-  // Delete message (Small UI Confirmation)
-  const handleDeleteMessage = (messageId) => {
-    setMessageToDelete(messageId);
+  // Delete message (store the whole identity: id + clientId)
+  const handleDeleteMessage = (msg) => {
+    if (!msg) return;
+    setMessageToDelete({ id: msg.id, clientId: msg.clientId });
   };
 
   const confirmDelete = async () => {
     if (!messageToDelete) return;
-    try {
-      await deleteMessage({ messageId: messageToDelete, userId: user?.id }).unwrap();
-      setAllMessages(prev => prev.filter(msg => msg.id !== messageToDelete));
-      toast.success("Message deleted");
-    } catch (err) {
-      console.error("Delete error:", err);
-      toast.error("Failed to delete message");
-    } finally {
-      setMessageToDelete(null);
+
+    const { id, clientId } = messageToDelete;
+
+    // If there is a real message id, call the API; otherwise just remove locally (e.g. system/call-attempt message)
+    if (id) {
+      try {
+        await deleteMessage({ messageId: id, userId: user?.id }).unwrap();
+        setAllMessages((prev) => prev.filter((msg) => msg.id !== id));
+        toast.success("Message deleted");
+      } catch (err) {
+        console.error("Delete error:", err);
+        toast.error("Failed to delete message");
+      }
+    } else if (clientId) {
+      // Local-only messages (like attempted call logs)
+      setAllMessages((prev) => prev.filter((msg) => msg.clientId !== clientId));
+      toast.success("Message removed");
     }
+
+    setMessageToDelete(null);
   };
 
   // Start editing message
@@ -258,8 +287,16 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
   // Send message
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (isBlocked) {
-      toast.error(t('chat.userBlocked'));
+    if (isLiveFlowChat) {
+      toast.info("You cannot write back to this system message.");
+      return;
+    }
+    if (blockedByMe) {
+      toast.error(t('chat.userBlocked')); // "User is blocked. You cannot send messages in this chat."
+      return;
+    }
+    if (blockedByOther) {
+      toast.error(t('chat.blockedMessage')); // "This user has blocked you..."
       return;
     }
     if ((!newMessage.trim() && attachedFiles.length === 0) || !selectedChat || !user) return;
@@ -327,8 +364,8 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
         err?.data?.message ||
         (typeof err?.error === "string" ? err.error : "");
       if (err?.status === 403 && errMsg?.toLowerCase().includes("block")) {
-        setIsBlocked(true);
-        toast.error(t('chat.userBlocked'));
+        setBlockedByOther(true);
+        toast.error(t('chat.blockedMessage'));
       } else {
         toast.error(errMsg || "Failed to send message");
       }
@@ -632,6 +669,10 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
             !prevDate || currentDate.toDateString() !== prevDate.toDateString();
 
           const isOwn = msg.sender?.id === user?.id;
+          const isSystemWarning =
+            msg.sender?.name === "LiveFlow" &&
+            typeof msg.message === "string" &&
+            msg.message.startsWith("Your account has been reported.");
           return (
             <div key={msg.id ?? msg.clientId ?? index}>
               {showDayHeader && (
@@ -679,6 +720,11 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                       </div>
                     )}
                     <p className="text-sm">{msg.message}</p>
+                    {isSystemWarning && (
+                      <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400 italic">
+                        You cannot write back to this system message.
+                      </p>
+                    )}
                     {msg.edited && !msg.deleted && (
                       <span className="text-[10px] opacity-70 mt-1 block">(edited)</span>
                     )}
@@ -737,15 +783,17 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                     )}
 
                     <div className={`absolute top-0 ${isOwn ? "-left-12" : "-right-12"} flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-y-2 group-hover:translate-y-0`}>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-full bg-white/80 dark:bg-card/80 backdrop-blur-md shadow-sm border border-border/50 hover:bg-indigo-50 dark:hover:bg-accent text-indigo-600 dark:text-indigo-400"
-                        onClick={() => handleReplyMessage(msg)}
-                        title="Reply"
-                      >
-                        <Reply className="h-4 w-4" />
-                      </Button>
+                      {!isSystemWarning && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full bg-white/80 dark:bg-card/80 backdrop-blur-md shadow-sm border border-border/50 hover:bg-indigo-50 dark:hover:bg-accent text-indigo-600 dark:text-indigo-400"
+                          onClick={() => handleReplyMessage(msg)}
+                          title="Reply"
+                        >
+                          <Reply className="h-4 w-4" />
+                        </Button>
+                      )}
 
                       {isOwn && (
                         <>
@@ -762,7 +810,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 rounded-full bg-white/80 dark:bg-card/80 backdrop-blur-md shadow-sm border border-border/50 hover:bg-red-50 dark:hover:bg-accent text-red-600 dark:text-red-400"
-                            onClick={() => handleDeleteMessage(msg.id)}
+                            onClick={() => handleDeleteMessage(msg)}
                             title="Delete"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -786,58 +834,62 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
 
                   {/* Message Actions */}
                   <div className="flex items-center gap-2 mt-1">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-500 dark:text-muted-foreground hover:text-gray-700 dark:hover:text-foreground">
-                          <Smile className="h-3 w-3" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="bg-card dark:bg-card border border-gray-200 dark:border-white/20">
-                        <div className="grid grid-cols-4 gap-1 p-2">
-                          {REACTION_EMOJIS.map((emoji) => (
-                            <Button
-                              key={emoji}
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-accent text-lg"
-                              onClick={() => addEmojiReaction(msg.id, emoji)}
-                            >
-                              {emoji}
-                            </Button>
-                          ))}
-                        </div>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {!isSystemWarning && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-500 dark:text-muted-foreground hover:text-gray-700 dark:hover:text-foreground">
+                            <Smile className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="bg-card dark:bg-card border border-gray-200 dark:border-white/20">
+                          <div className="grid grid-cols-4 gap-1 p-2">
+                            {REACTION_EMOJIS.map((emoji) => (
+                              <Button
+                                key={emoji}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-accent text-lg"
+                                onClick={() => addEmojiReaction(msg.id, emoji)}
+                              >
+                                {emoji}
+                              </Button>
+                            ))}
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-500 dark:text-muted-foreground hover:text-gray-700 dark:hover:text-foreground">
-                          <MoreVertical className="h-3 w-3" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align={isOwn ? "end" : "start"} className="bg-card dark:bg-card border border-gray-200 dark:border-white/20">
-                        <DropdownMenuItem onClick={() => handleReplyMessage(msg)} className="gap-2">
-                          <Reply className="h-4 w-4" /> Reply
-                        </DropdownMenuItem>
-
-                        {isOwn && (
-                          <>
-                            <DropdownMenuItem onClick={() => handleEditMessage(msg)} className="gap-2 text-blue-600 dark:text-blue-400">
-                              <Edit2 className="h-4 w-4" /> Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDeleteMessage(msg.id)} className="gap-2 text-red-600 dark:text-red-400">
-                              <Trash2 className="h-4 w-4" /> Delete
-                            </DropdownMenuItem>
-                          </>
-                        )}
-
-                        {!isOwn && (
-                          <DropdownMenuItem onClick={handleReportChat} className="gap-2 text-red-600 dark:text-red-400">
-                            <Flag className="h-4 w-4" /> Report
+                    {!isSystemWarning && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-500 dark:text-muted-foreground hover:text-gray-700 dark:hover:text-foreground">
+                            <MoreVertical className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align={isOwn ? "end" : "start"} className="bg-card dark:bg-card border border-gray-200 dark:border-white/20">
+                          <DropdownMenuItem onClick={() => handleReplyMessage(msg)} className="gap-2">
+                            <Reply className="h-4 w-4" /> Reply
                           </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+
+                          {isOwn && (
+                            <>
+                              <DropdownMenuItem onClick={() => handleEditMessage(msg)} className="gap-2 text-blue-600 dark:text-blue-400">
+                                <Edit2 className="h-4 w-4" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDeleteMessage(msg)} className="gap-2 text-red-600 dark:text-red-400">
+                                <Trash2 className="h-4 w-4" /> Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
+
+                          {!isOwn && (
+                            <DropdownMenuItem onClick={handleReportChat} className="gap-2 text-red-600 dark:text-red-400">
+                              <Flag className="h-4 w-4" /> Report
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
 
                   <p className="text-xs text-gray-500 dark:text-muted-foreground mt-1">{formatTime(msg.timestamp)}</p>
@@ -848,10 +900,17 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
           );
         })}
         {/* Blocked info as a final line in the chat view */}
-        {isBlocked && (
+        {blockedByOther && (
           <div className="flex justify-center mt-2">
             <span className="text-[11px] text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/30 px-3 py-1 rounded-full border border-red-200 dark:border-red-700">
               {t('chat.blockedMessage')}
+            </span>
+          </div>
+        )}
+        {blockedByMe && !blockedByOther && (
+          <div className="flex justify-center mt-2">
+            <span className="text-[11px] text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/30 px-3 py-1 rounded-full border border-red-200 dark:border-red-700">
+              {t('chat.blockedByYouMessage')}
             </span>
           </div>
         )}
@@ -925,10 +984,10 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
         </div>
       )}
 
-      {/* Block notice */}
-      {isBlocked && (
+      {/* Block notice (inline above input) */}
+      {(blockedByMe || blockedByOther) && (
         <div className="px-4 py-2 border-t border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-xs text-red-700 dark:text-red-200 text-center">
-          {t('chat.userBlocked')}
+          {blockedByOther ? t("chat.blockedMessage") : t("chat.blockedByYouMessage")}
         </div>
       )}
 
@@ -941,7 +1000,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
               variant="ghost"
               size="sm"
               className="text-[#7C84C8] dark:text-[#8A92D4] hover:bg-[#D0D4F0] dark:hover:bg-[#8A92D4]/20 rounded-full h-9 w-9 p-0"
-              disabled={isBlocked}
+              disabled={blockedByMe || blockedByOther || isLiveFlowChat}
             >
               <Smile className="h-4 w-4" />
             </Button>
@@ -993,7 +1052,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
           variant="ghost"
           size="sm"
           onClick={handleFileButtonClick}
-          disabled={isBlocked}
+          disabled={blockedByMe || blockedByOther || isLiveFlowChat}
           className="text-[#7C84C8] dark:text-[#8A92D4] hover:bg-[#D0D4F0] dark:hover:bg-[#8A92D4]/20 rounded-full h-9 w-9 p-0"
           title="Attach files (images & videos)"
         >
@@ -1008,7 +1067,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
           onClick={toggleRecording}
           className={`rounded-full h-9 w-9 p-0 ${isRecording ? "text-red-600" : "text-[#7C84C8] dark:text-[#8A92D4]"
             } hover:bg-[#D0D4F0] dark:hover:bg-[#8A92D4]/20`}
-          disabled={isBlocked}
+          disabled={blockedByMe || blockedByOther || isLiveFlowChat}
         >
           {isRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
         </Button>
@@ -1017,14 +1076,22 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
           type="text"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          placeholder={isBlocked ? "You cannot send messages in this chat" : "Type your message..."}
-          disabled={isBlocked}
+          placeholder={
+            isLiveFlowChat
+              ? "You cannot write back to this system message."
+              : blockedByOther
+              ? t("chat.blockedMessage")
+              : blockedByMe
+              ? t("chat.userBlocked")
+              : t("chat.typeMessage")
+          }
+          disabled={blockedByMe || blockedByOther || isLiveFlowChat}
           className="rounded-full border-0 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] focus-visible:ring-2 focus-visible:ring-[#8A92D4]/35 dark:focus-visible:ring-[#8A92D4]/40 flex-1 bg-white dark:bg-input text-gray-900 dark:text-foreground placeholder:text-[#A0A8C8] dark:placeholder:text-muted-foreground h-10 px-4"
         />
 
         <Button
           type="submit"
-          disabled={isBlocked || (!newMessage.trim() && attachedFiles.length === 0)}
+          disabled={blockedByMe || blockedByOther || isLiveFlowChat || (!newMessage.trim() && attachedFiles.length === 0)}
           className="rounded-full h-10 w-10 p-0 bg-[#8A92D4] dark:bg-[#8A92D4] text-white hover:bg-[#7C84C8] dark:hover:bg-[#7C84C8]"
         >
           <Send className="h-5 w-5" />
