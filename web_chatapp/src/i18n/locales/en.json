@@ -26,6 +26,7 @@
     "off": "Off",
     "today": "Today",
     "yesterday": "Yesterday",
+    "of": "of",
     "pageOf": "Page {{current}} of {{total}}"
   },
   "auth": {
@@ -272,6 +273,16 @@
     "deleteAccountConfirm": "Are you sure you want to delete your account?",
     "deleteAccountDesc": "This action cannot be undone. All your data will be permanently deleted.",
     "dangerZone": "Danger zone"
+  },
+  "welcome": {
+    "title": "Welcome to the Community!",
+    "subtitle": "Your account has been successfully verified!",
+    "connectPrompt": "People you might want to connect with:",
+    "matchScore": "Match score:",
+    "connect": "Connect",
+    "requested": "Requested",
+    "page": "Page",
+    "startChatting": "Start Chatting"
   },
   "mood": {
     "title": "How do you feel today?",

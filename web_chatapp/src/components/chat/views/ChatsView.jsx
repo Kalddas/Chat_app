@@ -14,6 +14,11 @@ export function ChatsView({ searchQuery, selectedChat, onChatSelect }) {
   const { user } = useAuth();
   const { onlineUsers, connectionState } = useWebSocket();
   const userId = user?.id;
+  const resolveAvatarUrl = (url) => {
+    if (!url) return "/placeholder.svg";
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    return `http://127.0.0.1:8000/${url.replace(/^\/+/, "")}`;
+  };
 
   const { refreshTrigger } = useChatsContext();
   const {
@@ -51,7 +56,7 @@ export function ChatsView({ searchQuery, selectedChat, onChatSelect }) {
       id: chat.conversation_id,
       name: `${otherUser?.first_name ?? ''} ${otherUser?.last_name ?? ''}`.trim() || (otherUser?.user_name ?? 'Unknown'),
       username: otherUser?.user_name ?? '',
-      avatar: otherUser?.profile_picture_url || "/placeholder.svg",
+      avatar: resolveAvatarUrl(otherUser?.profile_picture_url),
       bio: otherUser?.bio || "",
       lastMessage: chat.last_message ? (chat.last_message.message || "") : "No messages yet",
       timestamp: chat.last_message?.sent_at || chat.last_message_time,

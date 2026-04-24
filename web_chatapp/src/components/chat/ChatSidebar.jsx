@@ -92,6 +92,11 @@ export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSel
   }, [refetchConversations, refetchRequests]);
 
   const { theme, setTheme } = useTheme()
+  const resolveAvatarUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    return `http://127.0.0.1:8000/${url.replace(/^\/+/, "")}`;
+  };
 
   if (!user) return null
 
@@ -151,7 +156,7 @@ export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSel
                   <>
                     <AvatarImage
                       src={(() => {
-                        const url = profile?.profile_picture_url || user?.profile_picture_url;
+                        const url = resolveAvatarUrl(profile?.profile_picture_url || user?.profile_picture_url);
                         if (!url) return null;
                         return `${url}${url.includes('?') ? '&' : '?'}t=${profileData?.timestamp || 'initial'}`;
                       })()}

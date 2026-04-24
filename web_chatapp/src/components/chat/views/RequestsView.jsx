@@ -13,13 +13,25 @@ import { useAuth } from "../../../contexts/AuthContext"
 import { useChatsContext } from "../../../contexts/ChatsContext"
 
 export function RequestsView() {
-  const { data, isLoading, isError } = useGetReceivedRequestsQuery()
+  const { user } = useAuth()
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+  } = useGetReceivedRequestsQuery(undefined, {
+    skip: !user?.id,
+    refetchOnMountOrArgChange: true,
+  })
   const [acceptRequest] = useAcceptRequestMutation()
   const [rejectRequest] = useRejectRequestMutation()
   const [localRequests, setLocalRequests] = useState([])
   const { triggerChatsRefresh } = useChatsContext()
-
-  const { user } = useAuth()
+  const resolveAvatarUrl = (url) => {
+    if (!url) return "/placeholder.svg"
+    if (url.startsWith("http://") || url.startsWith("https://")) return url
+    return `http://127.0.0.1:8000/${url.replace(/^\/+/, "")}`
+  }
 
   console.log("RequestsView - data:", data)
   console.log("RequestsView - isLoading:", isLoading)
@@ -32,13 +44,19 @@ export function RequestsView() {
           id: req.request_id,
           name: req.sender_name,
           email: req.user_name, // API doesn't provide email, using username
-          avatar: req.profile_picture_url || "/placeholder.svg",
+          avatar: resolveAvatarUrl(req.profile_picture_url),
           status: "Pending",
           timestamp: new Date(req.created_at).toLocaleString(),
         }))
       )
     }
   }, [data])
+
+  useEffect(() => {
+    if (user?.id) {
+      refetch()
+    }
+  }, [user?.id, refetch])
 
   const handleAcceptRequest = async (requestId) => {
     try {

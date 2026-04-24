@@ -5,9 +5,11 @@ import { ChatMain } from "./ChatMain"
 import { ChatRightPanel } from "./ChatRightPanel"
 import { ProfileView } from "./views/ProfileView"
 import { MoodPromptModal } from "./MoodPromptModal"
+import { WelcomeModal } from "./WelcomeModal"
 import { useAuth } from "@/contexts/AuthContext"
 import { ChatsProvider } from "../../contexts/ChatsContext"
 import { useGetUserProfileQuery } from "../../services/userService"
+import { useGetMatchesQuery } from "../../services/matchService"
 import { shouldShowMoodPrompt, setMoodPromptShown } from "@/lib/mood"
 import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -25,9 +27,13 @@ export function ChatLayout() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false) // Profile modal
   const [isSidebarOpen, setIsSidebarOpen] = useState(false) // Mobile sidebar state
   const [showMoodPrompt, setShowMoodPrompt] = useState(false)
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false)
   const { user } = useAuth()
   const { data: profileData, isSuccess: profileLoaded, refetch: refetchProfile } = useGetUserProfileQuery(undefined, {
     skip: !user?.id,
+  })
+  const { data: matchesData } = useGetMatchesQuery(undefined, {
+    skip: !user?.id || !showWelcomeModal,
   })
   const rawProfile = profileData?.profile
   const profile =
@@ -40,6 +46,19 @@ export function ChatLayout() {
     if (!user?.id || !profileLoaded || !profile) return
     if (shouldShowMoodPrompt(user.id)) {
       setShowMoodPrompt(true)
+    }
+  }, [user?.id, profileLoaded])
+
+  // Show welcome modal for first-time users
+  useEffect(() => {
+    if (!user?.id || !profileLoaded) return
+    const hasSeenWelcome = localStorage.getItem("welcome_modal_seen")
+    if (!hasSeenWelcome) {
+      // Small delay to let the UI settle
+      const timer = setTimeout(() => {
+        setShowWelcomeModal(true)
+      }, 1000)
+      return () => clearTimeout(timer)
     }
   }, [user?.id, profileLoaded])
 
@@ -90,6 +109,11 @@ export function ChatLayout() {
         onMoodSet={handleMoodSet}
         onSkip={() => setShowMoodPrompt(false)}
         userId={user?.id}
+      />
+      <WelcomeModal
+        isOpen={showWelcomeModal}
+        onClose={() => setShowWelcomeModal(false)}
+        recommendedUsers={matchesData?.matches || []}
       />
       <div className="h-screen bg-gradient-to-br from-indigo-50 to-purple-100 dark:bg-background flex relative">
         {/* Mobile Hamburger Button */}

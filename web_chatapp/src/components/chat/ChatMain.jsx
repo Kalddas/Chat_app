@@ -82,6 +82,19 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
   const [messageToDelete, setMessageToDelete] = useState(null); // { id?, clientId? }
   const [blockedByMe, setBlockedByMe] = useState(false);     // I have blocked the other user
   const [blockedByOther, setBlockedByOther] = useState(false); // the other user has blocked me
+  const resolveAvatarUrl = useCallback((url) => {
+    if (!url) return null;
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    return `http://127.0.0.1:8000/${url.replace(/^\/+/, "")}`;
+  }, []);
+
+  const resolveFileUrl = useCallback((urlOrPath) => {
+    if (!urlOrPath) return null;
+    if (typeof urlOrPath !== "string") return null;
+    if (urlOrPath.startsWith("blob:")) return urlOrPath; // local preview
+    if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) return urlOrPath;
+    return `http://127.0.0.1:8000/${urlOrPath.replace(/^\/+/, "")}`;
+  }, []);
 
   const {
     messages: wsMessages,
@@ -120,6 +133,20 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
       });
     }
 
+    const rawAttachments = Array.isArray(msg.attachments) ? msg.attachments : [];
+    const normalizedAttachments = rawAttachments
+      .map((att) => {
+        const rawUrl = att?.url || att?.file_url || att?.file_path || null;
+        const url = resolveFileUrl(rawUrl);
+        return {
+          ...att,
+          url,
+          name: att?.name || (typeof att?.file_path === "string" ? att.file_path.split("/").pop() : undefined),
+          type: att?.type || att?.file_type,
+        };
+      })
+      .filter((att) => !!att);
+
     return {
       id: msg.id,
       clientId: msg.clientId || `temp-${Date.now()}-${Math.random()}`,
@@ -130,11 +157,11 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
       edited: msg.edited || false,
       deleted: msg.deleted || false,
       reactions: reactionsGrouped,
-      attachments: msg.attachments || [],
+      attachments: normalizedAttachments,
       audioUrl: msg.audioUrl,
       reply_to: msg.reply_to || null,
     };
-  }, []);
+  }, [resolveFileUrl]);
 
   // Merge API + WS + current messages
   useEffect(() => {
@@ -213,10 +240,10 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
   }, [selectedChat]);
 
   const ownAvatarUrl = useMemo(() => {
-    const src = profile?.profile_picture_url || user?.profile_picture_url;
+    const src = resolveAvatarUrl(profile?.profile_picture_url || user?.profile_picture_url);
     if (!src) return null;
     return `${src}${src.includes('?') ? '&' : '?'}t=${profileData?.timestamp || 'initial'}`;
-  }, [profile?.profile_picture_url, user?.profile_picture_url, profileData?.timestamp]);
+  }, [profile?.profile_picture_url, user?.profile_picture_url, profileData?.timestamp, resolveAvatarUrl]);
 
   // Delete message (store the whole identity: id + clientId)
   const handleDeleteMessage = (msg) => {
@@ -319,10 +346,12 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
         message: replyingTo.message,
         sender_name: replyingTo.sender?.name || replyingTo.sender?.first_name || "Unknown"
       } : null,
+      // Include local preview URLs so attachments render while "sending"
       attachments: attachedFiles.map((file) => ({
         name: file.name,
         size: file.size,
         type: file.type,
+        url: URL.createObjectURL(file),
       })),
     };
 
@@ -633,7 +662,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
         <div className="flex items-center gap-3 cursor-pointer" onClick={onContactInfoClick}>
           <div className="relative">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={selectedChatInfo?.avatar || "/placeholder.svg"} />
+              <AvatarImage src={resolveAvatarUrl(selectedChatInfo?.avatar) || "/placeholder.svg"} />
               <AvatarFallback className="bg-indigo-100 dark:bg-card text-indigo-700 dark:text-foreground">
                 {selectedChatInfo?.name?.charAt(0) || "U"}
               </AvatarFallback>
@@ -688,7 +717,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                 <div className={`flex items-end max-w-xs lg:max-w-md ${isOwn ? "flex-row-reverse" : ""}`}>
                 <Avatar className="h-8 w-8 mx-2">
                   <AvatarImage
-                    src={isOwn ? ownAvatarUrl : (selectedChatInfo?.avatar || "/placeholder.svg")}
+                    src={isOwn ? ownAvatarUrl : (resolveAvatarUrl(selectedChatInfo?.avatar) || "/placeholder.svg")}
                     className="object-cover"
                   />
                   <AvatarFallback className="bg-indigo-100 dark:bg-card text-indigo-700 dark:text-foreground">
@@ -732,26 +761,32 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                     {msg.attachments && msg.attachments.length > 0 && (
                       <div className="mt-2 space-y-2">
                         {msg.attachments.map((att, idx) => {
-                          const isImage = att.type?.startsWith('image/') || att.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-                          const isVideo = att.type?.startsWith('video/') || att.url?.match(/\.(mp4|webm|ogg)$/i);
+                          const rawAttachmentUrl = att.url || att.file_url || att.file_path || null;
+                          const attachmentUrl = rawAttachmentUrl
+                            ? (rawAttachmentUrl.startsWith('http')
+                              ? rawAttachmentUrl
+                              : `http://127.0.0.1:8000/${rawAttachmentUrl.replace(/^\/+/, '')}`)
+                            : null;
+                          const isImage = att.type?.startsWith('image/') || attachmentUrl?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                          const isVideo = att.type?.startsWith('video/') || attachmentUrl?.match(/\.(mp4|webm|ogg)$/i);
 
                           return (
                             <div
                               key={`${msg.id ?? msg.clientId}-att-${idx}`}
                               className="rounded overflow-hidden"
                             >
-                              {isImage && att.url && (
-                                <a href={att.url} target="_blank" rel="noopener noreferrer" className="block">
+                              {isImage && attachmentUrl && (
+                                <a href={attachmentUrl} target="_blank" rel="noopener noreferrer" className="block">
                                   <img
-                                    src={att.url}
+                                    src={attachmentUrl}
                                     alt={att.name || 'Attachment'}
                                     className="max-w-full max-h-64 rounded object-contain"
                                   />
                                 </a>
                               )}
-                              {isVideo && att.url && (
+                              {isVideo && attachmentUrl && (
                                 <video
-                                  src={att.url}
+                                  src={attachmentUrl}
                                   controls
                                   className="max-w-full max-h-64 rounded"
                                 >
@@ -760,7 +795,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                               )}
                               {!isImage && !isVideo && (
                                 <a
-                                  href={att.url}
+                                  href={attachmentUrl || '#'}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="flex items-center text-xs opacity-90 hover:underline"
@@ -919,7 +954,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
 
       {/* Selected Files Preview */}
       {attachedFiles.length > 0 && (
-        <div className="px-4 py-2 border-t border-[#E4E9FC]/60 dark:border-white/20 bg-[#E4E9FC] dark:bg-card">
+        <div className="px-4 py-2 border-t-2 border-indigo-300 dark:border-white/50 bg-[#E4E9FC] dark:bg-card">
           <div className="flex flex-wrap gap-2 items-center">
             {attachedFiles.map((file, index) => (
               <div
@@ -992,7 +1027,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
       )}
 
       {/* Input */}
-      <form onSubmit={handleSendMessage} className="p-4 flex gap-2 items-center border-t border-[#E4E9FC]/60 dark:border-white/20 bg-[#E4E9FC] dark:bg-card">
+      <form onSubmit={handleSendMessage} className="p-4 flex gap-2 items-center border-t-2 border-indigo-300 dark:border-white/50 bg-[#E4E9FC] dark:bg-card">
         <Popover>
           <PopoverTrigger asChild>
             <Button

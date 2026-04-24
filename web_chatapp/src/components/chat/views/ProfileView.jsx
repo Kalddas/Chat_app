@@ -62,7 +62,6 @@ export function ProfileView({ isOpen, onClose }) {
   const [profileImage, setProfileImage] = useState(null)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
-  const [lastUpdatedPictureUrl, setLastUpdatedPictureUrl] = useState(null)
   const [uploadingPicture, setUploadingPicture] = useState(false)
   const [imageVersion, setImageVersion] = useState(0)
   const fileInputRef = useRef(null)
@@ -72,44 +71,17 @@ export function ProfileView({ isOpen, onClose }) {
   useEffect(() => {
     if (profile) {
       setFormData(prev => {
-        const newProfilePictureUrl = profile.profile_picture_url || "";
-        const currentUrl = prev.profile_picture_url || "";
-
-        // CRITICAL: If we have a lastUpdatedPictureUrl (meaning we just uploaded), 
-        // NEVER overwrite it with profile data - always keep the updated URL
-        if (lastUpdatedPictureUrl) {
-          console.log("Preserving lastUpdatedPictureUrl:", lastUpdatedPictureUrl, "over profile URL:", newProfilePictureUrl);
-          return {
-            first_name: profile.first_name || "",
-            last_name: profile.last_name || "",
-            user_name: profile.user_name || "",
-            phone: profile.phone || "",
-            bio: profile.bio || "",
-            profile_picture_url: lastUpdatedPictureUrl, // NEVER overwrite recently updated URL
-          };
-        }
-
-        // No lastUpdatedPictureUrl, normal update logic
-        // Only update if URL actually changed
-        if (newProfilePictureUrl && newProfilePictureUrl !== currentUrl) {
-          return {
-            first_name: profile.first_name || "",
-            last_name: profile.last_name || "",
-            user_name: profile.user_name || "",
-            phone: profile.phone || "",
-            bio: profile.bio || "",
-            profile_picture_url: newProfilePictureUrl,
-          };
-        }
-
-        // URL hasn't changed or is empty, just update other fields but keep existing URL
+        const serverUrl = profile.profile_picture_url || "";
+        // Keep whichever URL is more recent: if we have one in state already, keep it
+        // unless the server has a different (newer) one
+        const urlToUse = prev.profile_picture_url || serverUrl;
         return {
           first_name: profile.first_name || "",
           last_name: profile.last_name || "",
           user_name: profile.user_name || "",
           phone: profile.phone || "",
           bio: profile.bio || "",
-          profile_picture_url: currentUrl || newProfilePictureUrl, // Keep existing URL if it exists
+          profile_picture_url: urlToUse,
         };
       });
 
@@ -174,130 +146,40 @@ export function ProfileView({ isOpen, onClose }) {
       setError("");
       setSuccess("");
 
-      // Validate profile image if present
-      if (profileImage) {
-        // Validate file type
-        if (!profileImage.type.startsWith('image/')) {
-          setError("Please select a valid image file");
-          return;
-        }
-
-        // Validate file size (5MB max)
-        const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-        if (profileImage.size > maxSize) {
-          setError("Image size must be less than 5MB");
-          return;
-        }
-      }
-
       const payload = new FormData();
       Object.entries({ ...formData, tags: selectedInterests }).forEach(([k, v]) => {
+        if (k === 'profile_picture_url') return; // never send the URL field
         if (Array.isArray(v)) v.forEach((val) => payload.append(`${k}[]`, val));
         else if (v !== undefined && v !== null) payload.append(k, v);
       });
-      // NOTE: Profile picture is handled automatically by the file input onChange
-      // So we don't need to append it here. Only send text fields.
 
       const result = await updateProfile(payload).unwrap();
 
-      console.log("Profile update result:", result);
-      console.log("Profile picture URL from result:", result.profile_picture_url);
-
-      // Update global auth state with new user data
       if (result.user || result.profile) {
-        updateUser(result.user || result.profile);
-      }
-
-      // Update formData with the new profile picture URL immediately from the response
-      const newProfilePictureUrl = result.profile_picture_url || result.profile?.profile_picture_url || result.user?.profile_picture_url;
-      if (newProfilePictureUrl && profileImage) {
-        setFormData(prev => ({
-          ...prev,
-          profile_picture_url: newProfilePictureUrl
-        }));
-        // Store the updated URL to prevent useEffect from overwriting it
-        setLastUpdatedPictureUrl(newProfilePictureUrl);
-        // Increment image version to force re-render
-        setImageVersion(prev => prev + 1);
-
-        // Preload the server image before clearing preview
-        const img = new Image();
-        img.onload = async () => {
-          // Wait for cache invalidation to complete and refresh
-          const refetchResult = await refetchProfile();
-
-          // Update formData again with refetched data to ensure consistency
-          const refetchedUrl = refetchResult?.data?.profile?.profile_picture_url || newProfilePictureUrl;
-          if (refetchedUrl) {
-            setFormData(prev => ({
-              ...prev,
-              profile_picture_url: refetchedUrl
-            }));
-            setLastUpdatedPictureUrl(refetchedUrl);
-            setImageVersion(prev => prev + 1);
-          }
-
-          // Now safe to clear preview
-          setProfileImage(null);
-          setIsEditing(false);
-          setSuccess("Profile updated successfully!");
+        const newUrl = result.profile_picture_url
+          || result.user?.profile_picture_url
+          || result.profile?.profile_picture_url;
+        const merged = {
+          ...(result.user || result.profile),
+          ...(newUrl ? { profile_picture_url: newUrl } : {}),
         };
-        img.onerror = async () => {
-          // Even if image fails, proceed with refetch
-          const refetchResult = await refetchProfile();
-          const refetchedUrl = refetchResult?.data?.profile?.profile_picture_url || newProfilePictureUrl;
-          if (refetchedUrl) {
-            setFormData(prev => ({
-              ...prev,
-              profile_picture_url: refetchedUrl
-            }));
-            setLastUpdatedPictureUrl(refetchedUrl);
-            setImageVersion(prev => prev + 1);
-          }
-          setTimeout(() => {
-            setProfileImage(null);
-          }, 2000);
-          setIsEditing(false);
-          setSuccess("Profile updated successfully!");
-        };
-        img.src = newProfilePictureUrl;
-      } else {
-        // No profile image or no URL
-        const refetchResult = await refetchProfile();
-        if (refetchResult?.data?.profile?.profile_picture_url) {
-          const refetchedUrl = refetchResult.data.profile.profile_picture_url;
-          setFormData(prev => ({
-            ...prev,
-            profile_picture_url: refetchedUrl
-          }));
-          setLastUpdatedPictureUrl(refetchedUrl);
-          setImageVersion(prev => prev + 1);
-        }
-        setIsEditing(false);
-        setSuccess("Profile updated successfully!");
-        if (profileImage) {
-          setTimeout(() => {
-            setProfileImage(null);
-          }, 1000);
+        updateUser(merged);
+        if (newUrl) {
+          setFormData(prev => ({ ...prev, profile_picture_url: newUrl }));
         }
       }
+
+      await refetchProfile();
+
+      setIsEditing(false);
+      setProfileImage(null);
+      setSuccess("Profile updated successfully!");
     } catch (err) {
-      console.error("Update failed:", err);
       let errorMessage = "Failed to update profile";
-
-      // Handle different error types
-      if (err?.data?.message) {
-        errorMessage = err.data.message;
-      } else if (err?.data?.errors) {
-        // Laravel validation errors
-        const firstError = Object.values(err.data.errors).flat()[0];
-        errorMessage = firstError || errorMessage;
-      } else if (err?.status === 422) {
-        errorMessage = "Validation failed. Please check your input";
-      } else if (err?.status === 413) {
-        errorMessage = "Image file is too large. Maximum size is 5MB";
-      }
-
+      if (err?.data?.message) errorMessage = err.data.message;
+      else if (err?.data?.errors) errorMessage = Object.values(err.data.errors).flat()[0] || errorMessage;
+      else if (err?.status === 422) errorMessage = "Validation failed. Please check your input";
+      else if (err?.status === 413) errorMessage = "Image file is too large. Maximum size is 5MB";
       setError(errorMessage);
     }
   };
@@ -418,7 +300,7 @@ export function ProfileView({ isOpen, onClose }) {
             <CardContent className="space-y-6">
               {/* Profile Picture Section */}
               <div className="space-y-4">
-                <div className="pb-2 border-b border-indigo-200 dark:border-white/30 dark:border-opacity-100">
+                <div className="pb-2 border-b-2 border-indigo-300 dark:border-white/50">
                   <Label className="text-base font-semibold text-indigo-900 dark:text-foreground">{t('profile.profilePicture')}</Label>
                   <p className="text-xs text-indigo-600 dark:text-muted-foreground mt-1">
                     {t('profile.profilePictureDesc')}
@@ -428,6 +310,7 @@ export function ProfileView({ isOpen, onClose }) {
                   <div className="relative">
                     <Avatar className="h-20 w-20 border-2 border-indigo-100 dark:border-white/30 dark:border-opacity-100">
                       <AvatarImage
+                        key={`${formData.profile_picture_url || profile?.profile_picture_url || "no-image"}-${profileData?.timestamp || "initial"}`}
                         src={(() => {
                           // 1. Preview (newly selected file)
                           if (profileImage && objectUrlRef.current) {
@@ -441,14 +324,6 @@ export function ProfileView({ isOpen, onClose }) {
                           return null;
                         })()}
                         alt={profile?.first_name || "Profile"}
-                        onError={(e) => {
-                          console.log("Image load error:", e.target.src);
-                          e.target.style.display = 'none'; // Hide to show fallback
-                        }}
-                        onLoad={(e) => {
-                          e.target.style.display = 'block'; // Ensure visible
-                          console.log("Image loaded:", e.target.src);
-                        }}
                         className="object-cover"
                       />
                       <AvatarFallback className="text-2xl bg-indigo-100 dark:bg-card text-indigo-700 dark:text-foreground">
@@ -484,208 +359,55 @@ export function ProfileView({ isOpen, onClose }) {
                       accept="image/*"
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
-                        if (file) {
-                          try {
-                            setError("");
-                            setSuccess("");
-
-                            // Validate file type
-                            if (!file.type.startsWith('image/')) {
-                              setError("Please select a valid image file");
-                              if (fileInputRef.current) {
-                                fileInputRef.current.value = '';
-                              }
-                              return;
-                            }
-
-                            // Validate file size (5MB max)
-                            const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-                            if (file.size > maxSize) {
-                              setError("Image size must be less than 5MB");
-                              if (fileInputRef.current) {
-                                fileInputRef.current.value = '';
-                              }
-                              return;
-                            }
-
-                            setUploadingPicture(true);
-
-                            // Show preview immediately - DO NOT clear until server image is confirmed visible
-                            setProfileImage(file);
-
-                            // Automatically save the profile picture
-                            const payload = new FormData();
-                            payload.append('profile_picture', file);
-
-                            const result = await updateProfile(payload).unwrap();
-
-                            console.log("Profile update result:", result);
-
-                            // Update global auth state
-                            if (result.user || result.profile) {
-                              updateUser(result.user || result.profile);
-                            }
-
-                            // Update formData with the new URL immediately from response
-                            const newProfilePictureUrl = result.profile_picture_url || result.user?.profile_picture_url || result.profile?.profile_picture_url;
-                            console.log("Extracted profile picture URL:", newProfilePictureUrl);
-
-                            if (!newProfilePictureUrl) {
-                              // If no URL, wait and refetch
-                              await new Promise(resolve => setTimeout(resolve, 1000));
-                              const refetchResult = await refetchProfile();
-                              const refetchedUrl = refetchResult?.data?.profile?.profile_picture_url;
-                              if (refetchedUrl) {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  profile_picture_url: refetchedUrl
-                                }));
-                                setLastUpdatedPictureUrl(refetchedUrl);
-                                setImageVersion(prev => prev + 1);
-                                setSuccess("Profile picture updated successfully!");
-                                setUploadingPicture(false);
-                                // Keep preview visible for 3 seconds to ensure server image loads
-                                setTimeout(() => {
-                                  setProfileImage(null);
-                                  if (fileInputRef.current) {
-                                    fileInputRef.current.value = '';
-                                  }
-                                }, 3000);
-                              }
-                              return;
-                            }
-
-                            // Set the URL immediately and mark it as updated
-                            setFormData(prev => ({
-                              ...prev,
-                              profile_picture_url: newProfilePictureUrl
-                            }));
-                            setLastUpdatedPictureUrl(newProfilePictureUrl);
-                            setImageVersion(prev => prev + 1);
-
-                            // Wait for database to be fully updated
-                            await new Promise(resolve => setTimeout(resolve, 500));
-
-                            // Refetch profile to get the updated data from database
-                            const refetchResult = await refetchProfile();
-                            console.log("Refetched profile:", refetchResult?.data);
-
-                            // Update formData with refetched data
-                            const refetchedUrl = refetchResult?.data?.profile?.profile_picture_url || newProfilePictureUrl;
-                            if (refetchedUrl) {
-                              console.log("Refetched URL:", refetchedUrl);
-                              setFormData(prev => ({
-                                ...prev,
-                                profile_picture_url: refetchedUrl
-                              }));
-                              setLastUpdatedPictureUrl(refetchedUrl);
-                              setImageVersion(prev => prev + 1);
-                            }
-
-                            // Preload the server image - ONLY clear preview after it's confirmed loaded AND visible
-                            const finalUrl = refetchedUrl || newProfilePictureUrl;
-                            const img = new Image();
-                            let imageLoaded = false;
-                            let imageVisible = false;
-
-                            console.log("Starting server image preload:", finalUrl);
-
-                            img.onload = () => {
-                              console.log("Server image preloaded successfully:", finalUrl);
-                              imageLoaded = true;
-
-                              // Wait a moment to ensure image is fully rendered in DOM
-                              setTimeout(() => {
-                                // Check if image is actually visible in the Avatar
-                                const avatarImg = document.querySelector(`[alt="${profile?.first_name || profile?.name}"]`);
-                                if (avatarImg && avatarImg.complete && avatarImg.naturalHeight !== 0) {
-                                  imageVisible = true;
-                                  console.log("Server image confirmed visible in Avatar");
-                                }
-
-                                setSuccess("Profile picture updated successfully!");
-                                setUploadingPicture(false);
-
-                                // Only clear preview after confirming server image is visible
-                                // Wait extra time to ensure smooth transition
-                                setTimeout(() => {
-                                  if (imageVisible || imageLoaded) {
-                                    console.log("Clearing preview - server image is ready");
-                                    setProfileImage(null);
-                                    if (fileInputRef.current) {
-                                      fileInputRef.current.value = '';
-                                    }
-                                  } else {
-                                    // If not visible yet, keep preview longer
-                                    console.log("Server image not visible yet, keeping preview");
-                                    setTimeout(() => {
-                                      setProfileImage(null);
-                                      if (fileInputRef.current) {
-                                        fileInputRef.current.value = '';
-                                      }
-                                    }, 2000);
-                                  }
-                                }, 1500);
-                              }, 800);
-                            };
-
-                            img.onerror = () => {
-                              console.error("Server image failed to preload:", finalUrl);
-                              setSuccess("Profile picture updated successfully!");
-                              setUploadingPicture(false);
-                              // Keep preview visible much longer if server image fails
-                              setTimeout(() => {
-                                console.log("Clearing preview after error timeout");
-                                setProfileImage(null);
-                                if (fileInputRef.current) {
-                                  fileInputRef.current.value = '';
-                                }
-                              }, 5000);
-                            };
-
-                            // Start loading the server image
-                            img.src = finalUrl;
-
-                            // Fallback timeout - if image takes too long, still show success but keep preview
-                            setTimeout(() => {
-                              if (!imageLoaded) {
-                                console.log("Server image load timeout (10s), but keeping preview visible");
-                                setSuccess("Profile picture updated successfully!");
-                                setUploadingPicture(false);
-                                // Keep preview visible longer since image is slow
-                                setTimeout(() => {
-                                  setProfileImage(null);
-                                  if (fileInputRef.current) {
-                                    fileInputRef.current.value = '';
-                                  }
-                                }, 5000);
-                              }
-                            }, 10000);
-                          } catch (err) {
-                            console.error("Failed to update profile picture:", err);
-                            let errorMessage = "Failed to update profile picture";
-
-                            // Handle different error types
-                            if (err?.data?.message) {
-                              errorMessage = err.data.message;
-                            } else if (err?.data?.errors?.profile_picture) {
-                              // Laravel validation errors
-                              const validationErrors = err.data.errors.profile_picture;
-                              errorMessage = Array.isArray(validationErrors) ? validationErrors[0] : validationErrors;
-                            } else if (err?.status === 422) {
-                              errorMessage = "Invalid image format or file too large. Please use JPG, PNG, GIF, WebP, BMP, SVG, or ICO (max 5MB)";
-                            } else if (err?.status === 413) {
-                              errorMessage = "Image file is too large. Maximum size is 5MB";
-                            }
-
-                            setError(errorMessage);
-                            setProfileImage(null);
-                            if (fileInputRef.current) {
-                              fileInputRef.current.value = '';
-                            }
-                          } finally {
-                            setUploadingPicture(false);
+                        if (!file) return;
+                        try {
+                          setError("");
+                          setSuccess("");
+                          if (!file.type.startsWith('image/')) {
+                            setError("Please select a valid image file");
+                            if (fileInputRef.current) fileInputRef.current.value = '';
+                            return;
                           }
+                          if (file.size > 5 * 1024 * 1024) {
+                            setError("Image size must be less than 5MB");
+                            if (fileInputRef.current) fileInputRef.current.value = '';
+                            return;
+                          }
+                          setUploadingPicture(true);
+                          setProfileImage(file);
+                          const payload = new FormData();
+                          payload.append('profile_picture', file);
+                          const result = await updateProfile(payload).unwrap();
+                          const newUrl = result.profile_picture_url
+                            || result.user?.profile_picture_url
+                            || result.profile?.profile_picture_url;
+                          if (result.user || result.profile) {
+                            const merged = {
+                              ...(result.user || result.profile),
+                              profile_picture_url: newUrl || undefined,
+                            };
+                            updateUser(merged);
+                          }
+                          if (newUrl) {
+                            setFormData(prev => ({ ...prev, profile_picture_url: newUrl }));
+                            setImageVersion(prev => prev + 1);
+                          }
+                          setSuccess("Profile picture updated successfully!");
+                          setProfileImage(null);
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        } catch (err) {
+                          let errorMessage = "Failed to update profile picture";
+                          if (err?.data?.message) errorMessage = err.data.message;
+                          else if (err?.data?.errors?.profile_picture) {
+                            const v = err.data.errors.profile_picture;
+                            errorMessage = Array.isArray(v) ? v[0] : v;
+                          } else if (err?.status === 422) errorMessage = "Invalid image format or file too large (max 5MB)";
+                          else if (err?.status === 413) errorMessage = "Image file is too large. Maximum size is 5MB";
+                          setError(errorMessage);
+                          setProfileImage(null);
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        } finally {
+                          setUploadingPicture(false);
                         }
                       }}
                       className="hidden"
@@ -701,11 +423,11 @@ export function ProfileView({ isOpen, onClose }) {
                 </div>
               </div>
 
-              <Separator className="bg-indigo-200 dark:bg-white/30 dark:opacity-100" />
+              <Separator className="bg-indigo-300 dark:bg-white/50 h-[2px]" />
 
               {/* Mood Section */}
               <div className="space-y-4">
-                <div className="pb-2 border-b border-indigo-200 dark:border-white/30 dark:border-opacity-100">
+                <div className="pb-2 border-b-2 border-indigo-300 dark:border-white/50">
                   <Label className="text-base font-semibold text-indigo-900 dark:text-foreground">{t('mood.title')}</Label>
                   <p className="text-xs text-indigo-600 dark:text-muted-foreground mt-1">
                     {visibleMoodSentence || t('mood.noMood')}
@@ -736,11 +458,11 @@ export function ProfileView({ isOpen, onClose }) {
                 </div>
               </div>
 
-              <Separator className="bg-indigo-200 dark:bg-white/30 dark:opacity-100" />
+              <Separator className="bg-indigo-300 dark:bg-white/50 h-[2px]" />
 
               {/* Personal Information Section */}
               <div className="space-y-4">
-                <div className="pb-2 border-b border-indigo-200 dark:border-white/30 dark:border-opacity-100">
+                <div className="pb-2 border-b-2 border-indigo-300 dark:border-white/50">
                   <Label className="text-base font-semibold text-indigo-900 dark:text-foreground">{t('profile.personalInfo')}</Label>
                 </div>
 
@@ -770,11 +492,11 @@ export function ProfileView({ isOpen, onClose }) {
                 </div>
               </div>
 
-              <Separator className="bg-indigo-200 dark:bg-white/30 dark:opacity-100" />
+              <Separator className="bg-indigo-300 dark:bg-white/50 h-[2px]" />
 
               {/* Bio Section */}
               <div className="space-y-4">
-                <div className="pb-2 border-b border-indigo-200 dark:border-white/30 dark:border-opacity-100">
+                <div className="pb-2 border-b-2 border-indigo-300 dark:border-white/50">
                   <Label className="text-base font-semibold text-indigo-900 dark:text-foreground">{t('profile.bio')}</Label>
                 </div>
                 <div className="space-y-2">
@@ -793,11 +515,11 @@ export function ProfileView({ isOpen, onClose }) {
                 </div>
               </div>
 
-              <Separator className="bg-indigo-200 dark:bg-white/30 dark:opacity-100" />
+              <Separator className="bg-indigo-300 dark:bg-white/50 h-[2px]" />
 
               {/* Tags Section */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between pb-2 border-b border-indigo-200 dark:border-white/30/80">
+                <div className="flex items-center justify-between pb-2 border-b-2 border-indigo-300 dark:border-white/50">
                   <Label className="text-base font-semibold text-indigo-900 dark:text-foreground">{t('profile.interests')}</Label>
                   {isEditing && selectedInterests.length > 0 && (
                     <Button

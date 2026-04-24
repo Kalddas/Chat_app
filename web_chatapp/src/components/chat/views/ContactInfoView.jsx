@@ -24,6 +24,11 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
   const [showCallDialog, setShowCallDialog] = useState(false)
   const [callType, setCallType] = useState(null) // 'video' | 'voice'
   const [isBlocked, setIsBlocked] = useState(false)
+  const resolveAvatarUrl = (url) => {
+    if (!url) return "/placeholder.svg"
+    if (url.startsWith("http://") || url.startsWith("https://")) return url
+    return `http://127.0.0.1:8000/${url.replace(/^\/+/, "")}`
+  }
   const videoRef = useRef(null)
   const localStreamRef = useRef(null)
   const callTimeoutRef = useRef(null)
@@ -37,7 +42,7 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
   const contact = selectedChatInfo ? {
     name: selectedChatInfo.name ?? t('errors.notFound'),
     subtitle: `@${selectedChatInfo.username}`,
-    avatar: selectedChatInfo.avatar,
+    avatar: resolveAvatarUrl(selectedChatInfo.avatar),
     phone: "", // Add phone field to your API if needed
     about: selectedChatInfo.bio && selectedChatInfo.bio.trim().length > 0
       ? selectedChatInfo.bio

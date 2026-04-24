@@ -15,6 +15,11 @@ export function DiscoveryView() {
   const [searchQuery, setSearchQuery] = useState("")
   const { data, isLoading, isError, refetch } = useGetMatchesQuery()
   const [sendChatRequest, { isLoading: isSendingRequest }] = useSendChatRequestMutation()
+  const resolveAvatarUrl = (url) => {
+    if (!url) return "/placeholder.svg"
+    if (url.startsWith("http://") || url.startsWith("https://")) return url
+    return `http://127.0.0.1:8000/${url.replace(/^\/+/, "")}`
+  }
 
   // Sync sent requests with API data
   useEffect(() => {
@@ -31,7 +36,7 @@ export function DiscoveryView() {
     id: match.user.id,
     name: `${match.user.first_name} ${match.user.last_name}`,
     email: match.user.email,
-    avatar: match.user.profile_picture_url || "/placeholder.svg",
+    avatar: resolveAvatarUrl(match.user.profile_picture_url),
     score: match.score,
     status: match.status
   })) || []).sort((a, b) => b.score - a.score) // Sort by score descending (highest first)

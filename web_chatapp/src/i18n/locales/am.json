@@ -26,6 +26,7 @@
     "off": "የተዘጋ",
     "today": "ዛሬ",
     "yesterday": "ትናንት",
+    "of": "ከ",
     "pageOf": "ገጽ {{current}} ከ {{total}}"
   },
   "auth": {
@@ -274,6 +275,16 @@
     "deleteAccountConfirm": "መለያዎን መሰረዝ እንደሚፈልጉ እርግጠኛ ነዎት?",
     "deleteAccountDesc": "ይህ እርምጃ ሊቀለበስ አይችልም። ሁሉም ዳታዎ ለዘላለም ይሰረዛል።",
     "dangerZone": "አደገኛ ዞን"
+  },
+  "welcome": {
+    "title": "ወደ ማህበረሰቡ እንኳን ደህና መጡ!",
+    "subtitle": "መለያዎ በተሳካ ሁኔታ ተረጋግጧል!",
+    "connectPrompt": "ሊገናኙ የሚፈልጓቸው ሰዎች:",
+    "matchScore": "የተመሳሰለ ነጥብ:",
+    "connect": "አገናኝ",
+    "requested": "ተጠይቋል",
+    "page": "ገጽ",
+    "startChatting": "ውይይት ጀምር"
   },
   "mood": {
     "title": "ዛሬ ምን ይሰማዎታል?",

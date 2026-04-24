@@ -67,7 +67,6 @@ export const userApi = createApi({
       query: (payload) => {
         // Accept either a plain object or a FormData; always send multipart when file is present
         let body;
-        let headers = {};
         if (payload instanceof FormData) {
           body = payload;
           // Laravel requires _method: 'PATCH' in FormData when using POST to simulate PATCH
@@ -91,6 +90,7 @@ export const userApi = createApi({
           body,
         };
       },
+      // Invalidate profile cache so all components (sidebar, profile view) get fresh data
       invalidatesTags: ['profile'],
     }),
 
