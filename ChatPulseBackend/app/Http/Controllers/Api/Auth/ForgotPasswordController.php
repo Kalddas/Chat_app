@@ -20,7 +20,9 @@ class ForgotPasswordController extends Controller
         try {
             // Validate email input
             $validator = Validator::make($request->all(), [
-                'email' => ['required', 'email', 'exists:users,email']
+                // Don't use `exists:users,email` here; it produces the confusing message
+                // "The selected email is invalid." We handle "email not found" explicitly below.
+                'email' => ['required', 'email']
             ]);
 
             if ($validator->fails()) {
@@ -36,7 +38,7 @@ class ForgotPasswordController extends Controller
             if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User not found'
+                    'message' => 'Email not found'
                 ], 404);
             }
 

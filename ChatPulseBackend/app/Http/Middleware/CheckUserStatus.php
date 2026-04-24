@@ -36,6 +36,8 @@ class CheckUserStatus
                 if (Carbon::parse($profile->suspended_until)->isPast()) {
                     $profile->status = 'Active';
                     $profile->suspended_until = null;
+                    // Reset report counters once suspension completes
+                    $profile->reports_reset_at = now();
                     $profile->save();
                     $status = 'Active';
                     \Log::info('Auto-unsuspended user after suspension period elapsed', [

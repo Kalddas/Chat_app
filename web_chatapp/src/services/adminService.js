@@ -14,6 +14,13 @@ export const adminApi = createApi({
     },
   }),
   endpoints: (builder) => ({
+    // Normalize backend pagination shapes into:
+    // { current_page, total_pages, total_items, per_page }
+    // Backend currently returns either:
+    // - pagination.last_page (search endpoint)
+    // - pagination.total_pages (all-users endpoint)
+    //
+    // Keep both working by mapping to a single consistent shape for the UI.
     getDashboardResult: builder.query({
       query: () => "admin/dashboard",
     }),
@@ -25,13 +32,33 @@ export const adminApi = createApi({
     }),
     getAllUser: builder.query({
       query: (page = 1) => `admin/users/all?page=${page}`,
-      transformResponse: (response) => ({
-        users: response.users || [],
-        total: response.total || 0,
-      }),
+      transformResponse: (response) => {
+        const p = response?.pagination || {};
+        return {
+          users: response?.users || [],
+          pagination: {
+            current_page: p.current_page ?? 1,
+            total_pages: p.total_pages ?? p.last_page ?? 1,
+            total_items: p.total_items ?? p.total ?? 0,
+            per_page: p.per_page ?? 10,
+          },
+        };
+      },
     }),
     searchUser: builder.query({
       query: (search) => `admin/users?search=${search}`,
+      transformResponse: (response) => {
+        const p = response?.pagination || {};
+        return {
+          users: response?.users || [],
+          pagination: {
+            current_page: p.current_page ?? 1,
+            total_pages: p.total_pages ?? p.last_page ?? 1,
+            total_items: p.total_items ?? p.total ?? 0,
+            per_page: p.per_page ?? 10,
+          },
+        };
+      },
     }),
     updateUserStatus: builder.mutation({
       query: ({ id, status }) => ({

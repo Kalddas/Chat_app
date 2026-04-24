@@ -19,10 +19,12 @@ class UserProfile extends Model
         'profile_image',
         'status',
         'suspended_until',
+        'reports_reset_at',
     ];
 
     protected $casts = [
         'suspended_until' => 'datetime',
+        'reports_reset_at' => 'datetime',
     ];
 
     public function user(){

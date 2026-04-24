@@ -70,54 +70,7 @@ class ReportController extends Controller
                 'reported_user_id' => $report->reported_user_id
             ]);
 
-            // Auto-suspend users who have been reported by 3 or more distinct users
-            if ($report->reported_user_id) {
-                $distinctReporterCount = Report::where('reported_user_id', $report->reported_user_id)
-                    ->distinct('reporter_user_id')
-                    ->count('reporter_user_id');
-
-                \Log::info('Auto-suspend check after report', [
-                    'reported_user_id' => $report->reported_user_id,
-                    'distinct_reporter_count' => $distinctReporterCount,
-                ]);
-
-                if ($distinctReporterCount >= 3) {
-                    $profile = UserProfile::where('user_id', $report->reported_user_id)->first();
-                    if ($profile && $profile->status !== 'Suspended') {
-                        $oldStatus = $profile->status;
-                        $profile->status = 'Suspended';
-                        $profile->suspended_until = now()->addDays(3);
-                        $profile->save();
-
-                        // Log this as an automated admin action
-                        try {
-                            AdminActionLog::create([
-                                'admin_user_id'   => null,
-                                'target_user_id'  => $report->reported_user_id,
-                                'action'          => 'user_auto_suspended',
-                                'details'         => [
-                                    'from' => $oldStatus,
-                                    'to' => 'Suspended',
-                                    'reason' => 'User reported by 3 or more different users',
-                                    'report_id' => $report->id,
-                                    'distinct_reporter_count' => $distinctReporterCount,
-                                ],
-                                'description'     => "User automatically suspended after being reported by {$distinctReporterCount} different users.",
-                            ]);
-                        } catch (\Throwable $e) {
-                            \Log::error('Failed to create auto-suspend action log', [
-                                'error' => $e->getMessage(),
-                                'reported_user_id' => $report->reported_user_id,
-                            ]);
-                        }
-
-                        \Log::warning('User automatically suspended due to multiple reports', [
-                            'reported_user_id' => $report->reported_user_id,
-                            'distinct_reporter_count' => $distinctReporterCount,
-                        ]);
-                    }
-                }
-            }
+            // Automated warning/suspension is handled by ReportObserver on report creation.
 
             return response()->json([
                 'message' => 'Report submitted successfully',

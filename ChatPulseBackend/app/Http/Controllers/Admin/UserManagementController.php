@@ -108,7 +108,13 @@ class UserManagementController extends Controller
         $reason = $request->input('reason');
 
         if ($user->profile) {
-            $user->profile()->update(['status' => $finalStatus]);
+            $updates = ['status' => $finalStatus];
+            // If activating a previously suspended user, reset report counters
+            if ($finalStatus === 'Active' && $oldStatus === 'Suspended') {
+                $updates['suspended_until'] = null;
+                $updates['reports_reset_at'] = now();
+            }
+            $user->profile()->update($updates);
             $user->refresh();
 
             // Log the status change

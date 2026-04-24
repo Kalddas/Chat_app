@@ -16,7 +16,11 @@ class DashboaredController extends Controller
         $newUsers = User::where('created_at', '>=', Carbon::now()->subMonth())->count();
         $userGrowthPercentage = $totalUsers > 0 ? ($newUsers / $totalUsers) * 100 : 0;
         $activeUsers = User::where('last_login_at','>=',Carbon::now()->subDay())->count();
-        $onlineUsers = 342; // this would be tracked from the real time tracking
+        // Count users considered "online" by the app's existing rule:
+        // show_online_status enabled + last_seen_at within the last 5 minutes.
+        $onlineUsers = User::where('show_online_status', true)
+            ->where('last_seen_at', '>=', Carbon::now()->subMinutes(5))
+            ->count();
 
         $pendingReports = Report::where('status','pending')->count();
         $recentReports = Report::orderBy('created_at','desc')->take(10)->get();

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Report;
+use App\Observers\ReportObserver;
 use Illuminate\Routing\UrlGenerator;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
@@ -28,5 +30,8 @@ class AppServiceProvider extends ServiceProvider
 
         // Set default string length for database to support emojis
         Schema::defaultStringLength(255);
+
+        // Enforce automated actions on report creation (warning/suspension thresholds)
+        Report::observe(ReportObserver::class);
     }
 }
