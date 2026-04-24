@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Reverb Chat Test</title>
+        <!-- CSP: allow scripts from self + cdnjs + unpkg; allow inline/eval for testing -->
+        <meta
+            http-equiv="Content-Security-Policy"
+            content="script-src 'self' https://cdnjs.cloudflare.com https://unpkg.com 'unsafe-inline' 'unsafe-eval';"
+        />
+
+        <!-- Load Pusher (Reverb-compatible) -->
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/pusher/7.2.0/pusher.min.js"
+            crossorigin="anonymous"
+            onerror="console.error('❌ Failed to load Pusher script'); alert('Pusher script failed to load')"
+        ></script>
+
+        <!-- Load Laravel Echo UMD IIFE build -->
+        <script
+            src="https://unpkg.com/laravel-echo/dist/echo.iife.js"
+            crossorigin="anonymous"
+            onerror="console.error('❌ Failed to load Echo script'); alert('Echo script failed to load')"
+        ></script>
+
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                padding: 20px;
+            }
+            #messages {
+                border: 1px solid #ccc;
+                padding: 10px;
+                height: 300px;
+                overflow-y: auto;
+                margin-bottom: 10px;
+            }
+            #messages div {
+                margin-bottom: 5px;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>🔗 Reverb Chat Test</h2>
+
+        <label>Sanctum API Token: </label>
+        <input
+            type="text"
+            id="token"
+            placeholder="Enter API token"
+            style="width: 400px"
+        /><br /><br />
+
+        <label>Conversation ID: </label>
+        <input
+            type="number"
+            id="conversationId"
+            placeholder="Enter conversation ID"
+        /><br /><br />
+
+        <div id="messages"></div>
+
+        <input
+            type="text"
+            id="messageInput"
+            placeholder="Type a message"
+            style="width: 400px"
+        />
+        <button id="sendBtn">Send</button>
+        <button id="connectBtn">Connect</button>
+
+        <script>
+            // 🔧 Configuration
+            const WS_HOST = "chat-2swc.onrender.com";
+            const APP_KEY = "89pbiicfbhrz8hbnb8ai";
+            const API_URL = "https://liveflow-v99z.onrender.com";
+            let echo = null;
+
+            document.addEventListener("DOMContentLoaded", () => {
+                if (window.Pusher && window.Echo) {
+                    console.log("✅ Pusher and Echo scripts loaded");
+                    document
+                        .getElementById("connectBtn")
+                        .addEventListener("click", initEcho);
+                    document
+                        .getElementById("sendBtn")
+                        .addEventListener("click", sendMessage);
+                } else {
+                    console.error("❌ Scripts did not load correctly");
+                    alert("Failed to load required scripts (Pusher/Echo)");
+                }
+            });
+
+            function initEcho() {
+                const token = document.getElementById("token").value.trim();
+                const conversationId = document
+                    .getElementById("conversationId")
+                    .value.trim();
+
+                if (!token || !conversationId) {
+                    return alert("Enter both token and conversation ID");
+                }
+
+                if (echo && typeof echo.disconnect === "function") {
+                    echo.disconnect();
+                    console.log("🔌 Disconnected previous Echo instance");
+                }
+
+                try {
+                    const EchoClass = window.Echo.default || window.Echo;
+                    echo = new EchoClass({
+                        broadcaster: "reverb",
+                        key: APP_KEY,
+                        wsHost: WS_HOST,
+                        wsPort: 6001,
+                        wssPort: 6001,
+                        forceTLS: true,
+                        enabledTransports: ["wss"],
+                        disableStats: true,
+                        authEndpoint: `${API_URL}/broadcasting/auth`,
+                        auth: { headers: { Authorization: `Bearer ${token}` } },
+                    });
+                    echo.connector.pusher.connection.bind_global(
+                        (event, data) => {
+                            console.log("📡 GLOBAL EVENT:", event, data);
+                        }
+                    );
+
+                    console.log("✅ Echo initialized");
+
+                    // Subscribe to private channel
+                    echo.private(`conversation.${conversationId}`)
+                        .listen("MessageSent", (e) => {
+                            console.log("📩 Message received:", e);
+                            // Adjust properties based on your backend payload
+                            const userId =
+                                e.user_id || (e.user && e.user.id) || "Unknown";
+                            const message = e.message || "";
+                            const createdAt =
+                                e.created_at || new Date().toLocaleTimeString();
+                            addMessage(
+                                `[${createdAt}] User ${userId}: ${message}`
+                            );
+                        })
+                        .error((err) => {
+                            console.error("❌ Subscription error:", err);
+                            alert("Failed to subscribe: " + err.message);
+                        });
+
+                    console.log(
+                        `🔗 Subscribed to private-conversation.${conversationId}`
+                    );
+                } catch (err) {
+                    console.error("❌ Echo init failed:", err);
+                    alert("Echo init failed: " + err.message);
+                    echo = null;
+                }
+            }
+
+            async function sendMessage() {
+                const token = document.getElementById("token").value.trim();
+                const conversationId = document
+                    .getElementById("conversationId")
+                    .value.trim();
+                const message = document
+                    .getElementById("messageInput")
+                    .value.trim();
+
+                if (!message || !token || !conversationId) {
+                    return alert("Enter token, conversation ID, and message");
+                }
+
+                try {
+                    const res = await fetch(
+                        `${API_URL}/api/chat/conversations/${conversationId}/messages/send`,
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({
+                                conversation_id: conversationId,
+                                message,
+                            }),
+                        }
+                    );
+
+                    if (!res.ok) {
+                        const error = await res.json().catch(() => ({}));
+                        throw new Error(
+                            error.message || "Failed to send message"
+                        );
+                    }
+
+                    // Show immediately
+                    addMessage(`[You]: ${message}`);
+                    document.getElementById("messageInput").value = "";
+                    console.log("✅ Message sent successfully");
+                } catch (err) {
+                    console.error("❌ Send error:", err);
+                    alert("Error sending message: " + err.message);
+                }
+            }
+
+            function addMessage(text) {
+                const msgEl = document.createElement("div");
+                msgEl.textContent = text;
+                const box = document.getElementById("messages");
+                box.appendChild(msgEl);
+                box.scrollTop = box.scrollHeight;
+            }
+        </script>
+    </body>
+</html>

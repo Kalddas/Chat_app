@@ -1,0 +1,36 @@
+FROM php:8.2-cli
+
+# Allow composer to run as root (silences plugin / root warnings)
+ENV COMPOSER_ALLOW_SUPERUSER=1
+WORKDIR /var/www/html
+
+# Install system packages and php extensions commonly needed by Laravel packages
+RUN apt-get update && apt-get install -y \
+    git unzip libzip-dev libpng-dev libonig-dev libxml2-dev zlib1g-dev libpq-dev supervisor \
+  && docker-php-ext-install pdo_pgsql mbstring exif pcntl zip \
+  && rm -rf /var/lib/apt/lists/*
+
+# Copy composer binary from official composer image
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Copy composer files first to leverage Docker cache
+COPY composer.json composer.lock ./
+
+# Install PHP deps but skip composer scripts because artisan is not copied yet
+RUN composer install --no-dev --prefer-dist --no-progress --no-interaction --optimize-autoloader --no-scripts
+
+# Copy the rest of the application files (artisan will now be present)
+COPY . .
+
+# Now generate optimized autoload and run Laravel's discovery step (artisan exists)
+RUN composer dump-autoload --optimize \
+ && php artisan package:discover --ansi
+
+# Copy supervisor config
+COPY ./docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Expose Reverb port
+EXPOSE 6001
+
+# Start supervisor (which runs both Reverb + Queue worker)
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

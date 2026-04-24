@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # PHP-FPM Application Service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: random-chat-app
+    restart: unless-stopped
+    working_dir: /var/www/
+    volumes:
+      - ./:/var/www
+    networks:
+      - random-chat-network
+
+  # Nginx Web Server Service
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: random-chat-nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d/
+    networks:
+      - random-chat-network
+    depends_on:
+      - app
+      - db
+
+  # MySQL Database Service
+  db:
+    image: mysql:8.0
+    container_name: random-chat-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+    ports:
+      - "33061:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - random-chat-network
+
+networks:
+  random-chat-network:
+    driver: bridge
+
+volumes:
+  db-data:
+    driver: local
