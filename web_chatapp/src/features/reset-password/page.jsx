@@ -57,8 +57,10 @@ export default function ResetPasswordPage() {
             return;
         }
 
-        if (password.length < 8) {
-            setError(t("errors.validationFailed"));
+        // Password strength validation
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+        if (!passwordRegex.test(password)) {
+            setError("Password must contain at least 8 characters, including uppercase, lowercase, number, and special character (@$!%*?&#)");
             return;
         }
 
@@ -133,26 +135,21 @@ export default function ResetPasswordPage() {
                                     placeholder={t("auth.passwordPlaceholder")}
                                 />
                                 {password && (
-                                    <div className="space-y-2">
-                                        <div className="flex space-x-1">
-                                            {[1, 2, 3, 4, 5].map((level) => (
-                                                <div
-                                                    key={level}
-                                                    className={`h-2 flex-1 rounded-full ${passwordStrength >= level
-                                                            ? passwordStrength <= 2
-                                                                ? "bg-red-500"
-                                                                : passwordStrength <= 3
-                                                                    ? "bg-yellow-500"
-                                                                    : "bg-green-500"
-                                                            : "bg-gray-200"
-                                                        }`}
-                                                />
-                                            ))}
-                                        </div>
-                                        <p className="text-xs text-gray-500 dark:text-muted-foreground">
-                                            {passwordStrength <= 2 && t("time.minutesAgo", { count: 1 }).includes("1") && "Weak"}
-                                            {passwordStrength === 3 && "Medium"}
-                                            {passwordStrength >= 4 && "Strong"}
+                                    <div className="text-xs space-y-1">
+                                        <p className={password.length >= 8 ? "text-green-600" : "text-amber-600"}>
+                                            • At least 8 characters
+                                        </p>
+                                        <p className={/[A-Z]/.test(password) ? "text-green-600" : "text-amber-600"}>
+                                            • One uppercase letter
+                                        </p>
+                                        <p className={/[a-z]/.test(password) ? "text-green-600" : "text-amber-600"}>
+                                            • One lowercase letter
+                                        </p>
+                                        <p className={/\d/.test(password) ? "text-green-600" : "text-amber-600"}>
+                                            • One number
+                                        </p>
+                                        <p className={/[@$!%*?&#]/.test(password) ? "text-green-600" : "text-amber-600"}>
+                                            • One special character (@$!%*?&#)
                                         </p>
                                     </div>
                                 )}

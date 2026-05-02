@@ -13,8 +13,14 @@ class ChangePasswordController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'old_password' => 'required',
-            'new_password' => 'required|min:8',
+            'new_password' => [
+                'required',
+                'min:8',
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/'
+            ],
             'password_confirmation' => 'required|same:new_password',
+        ], [
+            'new_password.regex' => 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#)'
         ]);
 
         if ($validator->fails()) {

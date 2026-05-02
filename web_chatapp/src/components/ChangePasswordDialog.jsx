@@ -13,8 +13,10 @@ import { Label } from "./ui/label";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Loader2, Lock, AlertCircle } from "lucide-react";
 import { useChangePasswordMutation } from "../services/authService";
+import { useTranslation } from "react-i18next";
 
 export default function ChangePasswordDialog({ open, onOpenChange, onPasswordChanged }) {
+  const { t } = useTranslation();
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -45,17 +47,19 @@ export default function ChangePasswordDialog({ open, onOpenChange, onPasswordCha
     setError("");
 
     if (!oldPassword || !newPassword || !confirmPassword) {
-      setError("Please fill in all fields");
+      setError(t("auth.fillRequiredFields"));
       return;
     }
 
-    if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters long");
+    // Password strength validation
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      setError(t("errors.passwordTooWeak"));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("auth.passwordsDoNotMatch"));
       return;
     }
 
@@ -63,7 +67,7 @@ export default function ChangePasswordDialog({ open, onOpenChange, onPasswordCha
       await changePassword({
         old_password: oldPassword,
         new_password: newPassword,
-        new_password_confirmation: confirmPassword,
+        password_confirmation: confirmPassword,
       }).unwrap();
       
       // Clear form and close
@@ -79,7 +83,7 @@ export default function ChangePasswordDialog({ open, onOpenChange, onPasswordCha
       
       onOpenChange(false);
     } catch (err) {
-      setError(err?.data?.message || "Failed to change password");
+      setError(err?.data?.message || t("errors.failedToUpdate"));
     }
   };
 
@@ -123,27 +127,23 @@ export default function ChangePasswordDialog({ open, onOpenChange, onPasswordCha
             />
             {newPassword && (
               <div className="space-y-2">
-                <div className="flex space-x-1">
-                  {[1, 2, 3, 4, 5].map((level) => (
-                    <div
-                      key={level}
-                      className={`h-2 flex-1 rounded-full ${
-                        passwordStrength >= level
-                          ? passwordStrength <= 2
-                            ? "bg-red-500"
-                            : passwordStrength <= 3
-                            ? "bg-yellow-500"
-                            : "bg-green-500"
-                          : "bg-gray-200 dark:bg-muted"
-                      }`}
-                    />
-                  ))}
+                <div className="text-xs space-y-1">
+                  <p className={newPassword.length >= 8 ? "text-green-600" : "text-amber-600"}>
+                    • At least 8 characters
+                  </p>
+                  <p className={/[A-Z]/.test(newPassword) ? "text-green-600" : "text-amber-600"}>
+                    • One uppercase letter
+                  </p>
+                  <p className={/[a-z]/.test(newPassword) ? "text-green-600" : "text-amber-600"}>
+                    • One lowercase letter
+                  </p>
+                  <p className={/\d/.test(newPassword) ? "text-green-600" : "text-amber-600"}>
+                    • One number
+                  </p>
+                  <p className={/[@$!%*?&#]/.test(newPassword) ? "text-green-600" : "text-amber-600"}>
+                    • One special character (@$!%*?&#)
+                  </p>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-muted-foreground">
-                  {passwordStrength <= 2 && "Weak"}
-                  {passwordStrength === 3 && "Medium"}
-                  {passwordStrength >= 4 && "Strong"}
-                </p>
               </div>
             )}
           </div>

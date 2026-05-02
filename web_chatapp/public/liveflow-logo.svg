@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <!-- Blur filter for soft edges -->
+    <filter id="blur">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
+    </filter>
+  </defs>
+  
+  <!-- More rounded chat bubble outline with soft blur -->
+  <path d="M 50 20 
+           C 65 20, 75 30, 75 45
+           C 75 55, 70 62, 60 65
+           L 45 65
+           L 40 75
+           L 38 65
+           L 30 65
+           C 20 62, 15 55, 15 45
+           C 15 30, 25 20, 40 20
+           Z" 
+        fill="none"
+        stroke="#6366F1" 
+        stroke-width="6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        filter="url(#blur)"/>
+  
+  <!-- Notification dot with blur (top-right) -->
+  <circle cx="70" cy="25" r="12" fill="#818CF8" filter="url(#blur)"/>
+</svg>

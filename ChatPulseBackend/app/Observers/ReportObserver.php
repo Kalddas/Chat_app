@@ -149,47 +149,98 @@ class ReportObserver
             }
         }
 
-        // 2) Suspension for 10 days when reported by 5 different users (per reset window)
-        if ($distinctReporterCount >= 5) {
+        // 2) Ban permanently when user receives 4 or more total reports (per reset window)
+        if ($totalReportCount >= 4) {
             if (!$profile || $profile->status === 'Banned') {
                 return;
             }
 
-            $suspendUntil = now()->addDays(10);
+            $oldStatus = $profile->status;
+            $profile->status = 'Banned';
+            $profile->suspended_until = null; // Banned is permanent, no expiry
+            $profile->save();
 
-            // If already suspended, extend if needed; otherwise suspend.
-            $alreadySuspended = $profile->status === 'Suspended';
-            $currentUntil = $profile->suspended_until;
-            $finalUntil = $currentUntil && $currentUntil->gt($suspendUntil) ? $currentUntil : $suspendUntil;
+            try {
+                AdminActionLog::create([
+                    'admin_user_id'   => null,
+                    'target_user_id'  => $reportedUserId,
+                    'action'          => 'user_auto_banned',
+                    'details'         => [
+                        'from' => $oldStatus,
+                        'to' => 'Banned',
+                        'reason' => 'User reported 4 or more times',
+                        'report_id' => $report->id,
+                        'total_report_count' => $totalReportCount,
+                        'distinct_reporter_count' => $distinctReporterCount,
+                    ],
+                    'description'     => "User automatically banned after receiving {$totalReportCount} reports.",
+                ]);
+            } catch (\Throwable $e) {
+                \Log::error('ReportObserver failed to create auto-ban action log', [
+                    'error' => $e->getMessage(),
+                    'reported_user_id' => $reportedUserId,
+                ]);
+            }
 
-            if (!$alreadySuspended || !$currentUntil || $finalUntil->ne($currentUntil)) {
-                $oldStatus = $profile->status;
-                $profile->status = 'Suspended';
-                $profile->suspended_until = $finalUntil;
-                $profile->save();
+            // Send LiveFlow chat message to notify user they are banned
+            try {
+                $banText = 'Your account has been permanently banned due to multiple reports. If you believe this is a mistake, please contact support.';
 
-                try {
-                    AdminActionLog::create([
-                        'admin_user_id'   => null,
-                        'target_user_id'  => $reportedUserId,
-                        'action'          => 'user_auto_suspended',
-                        'details'         => [
-                            'from' => $oldStatus,
-                            'to' => 'Suspended',
-                            'reason' => 'User reported by 5 different users',
-                            'report_id' => $report->id,
-                            'total_report_count' => $totalReportCount,
-                            'distinct_reporter_count' => $distinctReporterCount,
-                            'suspended_until' => $finalUntil->toDateTimeString(),
-                        ],
-                        'description'     => "User automatically suspended for 10 days after being reported by {$distinctReporterCount} different users.",
-                    ]);
-                } catch (\Throwable $e) {
-                    \Log::error('ReportObserver failed to create auto-suspend action log', [
-                        'error' => $e->getMessage(),
-                        'reported_user_id' => $reportedUserId,
+                $systemEmail = 'liveflow@system.local';
+                $systemUser = User::where('email', $systemEmail)->first();
+                if (!$systemUser) {
+                    $systemUser = User::create([
+                        'email' => $systemEmail,
+                        'password' => bcrypt(bin2hex(random_bytes(16))),
+                        'role' => 'admin',
+                        'email_verified_at' => now(),
                     ]);
                 }
+                if (!$systemUser->profile) {
+                    $systemUser->profile()->create([
+                        'first_name' => 'LiveFlow',
+                        'last_name' => '',
+                        'user_name' => 'LiveFlow',
+                        'bio' => 'System messages',
+                        'status' => 'Active',
+                        'phone' => null,
+                    ]);
+                }
+
+                $reportedUser = User::find($reportedUserId);
+                if ($reportedUser) {
+                    $conversation = Conversation::whereHas('users', function ($q) use ($systemUser) {
+                            $q->where('user_id', $systemUser->id);
+                        })
+                        ->whereHas('users', function ($q) use ($reportedUser) {
+                            $q->where('user_id', $reportedUser->id);
+                        })
+                        ->first();
+
+                    if (!$conversation) {
+                        $conversation = Conversation::create();
+                        $conversation->users()->attach([$systemUser->id, $reportedUser->id]);
+                    }
+
+                    $msg = Message::create([
+                        'sender_id' => $systemUser->id,
+                        'receiver_id' => $reportedUser->id,
+                        'conversation_id' => $conversation->id,
+                        'text' => $banText,
+                    ]);
+
+                    try {
+                        event(new ChatEvent($msg));
+                    } catch (\Throwable $e) {
+                        \Log::warning('Broadcast LiveFlow ban message failed (non-fatal): ' . $e->getMessage());
+                    }
+                }
+            } catch (\Throwable $chatBanError) {
+                \Log::error('ReportObserver failed to send LiveFlow chat ban message', [
+                    'error' => $chatBanError->getMessage(),
+                    'reported_user_id' => $reportedUserId,
+                    'report_id' => $report->id,
+                ]);
             }
         }
     }

@@ -87,6 +87,12 @@ class ChatController extends Controller
     // sending(creating) a new message - UPDATED
     public function sendMessage(Request $request, $conversationId)
     {
+        Log::info('VIDEO UPLOAD: Request received', [
+            'conversation_id' => $conversationId,
+            'has_files' => $request->hasFile('attachments'),
+            'file_count' => $request->hasFile('attachments') ? count($request->file('attachments')) : 0
+        ]);
+        
         $request->validate([
             'text' => 'nullable|string',
             'receiver_id' => 'required|exists:users,id',

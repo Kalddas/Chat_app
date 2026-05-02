@@ -327,7 +327,19 @@
     "emailNotVerified": "ከመግባትዎ በፊት ኢሜይልዎን ያረጋግጡ",
     "accountBanned": "መለያዎ ተከልክሏል እና ማግኘት አይቻልም",
     "accountNotActive": "መለያዎ ንቁ አይደለም። እባክዎ አስተዳዳሪን ያናግሩ።",
-    "mediaAccess": "ካሜራዎን/ማይክሮፎንዎን ማግኘት አልተቻለም። እባክዎ ፈቃድ ቅንብሮትን ይፈትሹ።"
+    "mediaAccess": "ካሜራዎን/ማይክሮፎንዎን ማግኘት አልተቻለም። እባክዎ ፈቃድ ቅንብሮትን ይፈትሹ።",
+    "invalidEmail": "ልክ ያልሆነ የኢሜይል ቅርጸት። እባክዎ ቅርጸት ይጠቀሙ: user@example.com",
+    "validEmail": "ልክ ያለ የኢሜይል ቅርጸት",
+    "phoneDigitsRequired": "{{count}} ተጨማሪ አሃዞች ያስፈልጋሉ",
+    "phoneDigitsRequired_plural": "{{count}} ተጨማሪ አሃዞች ያስፈልጋሉ",
+    "phoneMustBe10Digits": "ስልክ ቁጥር በትክክል 10 አሃዞች መሆን አለበት",
+    "passwordRequirements": "የይለፍ ቃል መስፈርቶች:",
+    "passwordMinLength": "ቢያንስ 8 ቁምፊዎች",
+    "passwordUppercase": "አንድ ትልቅ ፊደል",
+    "passwordLowercase": "አንድ ትንሽ ፊደል",
+    "passwordNumber": "አንድ ቁጥር",
+    "passwordSpecialChar": "አንድ ልዩ ቁምፊ (@$!%*?&#)",
+    "passwordTooWeak": "የይለፍ ቃል ቢያንስ 8 ቁምፊዎች፣ ትልቅ ፊደል፣ ትንሽ ፊደል፣ ቁጥር እና ልዩ ቁምፊ (@$!%*?&#) መያዝ አለበት"
   },
   "admin": {
     "dashboard": "ዳሽቦርድ",

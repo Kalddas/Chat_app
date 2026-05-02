@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../..
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Alert, AlertDescription } from "../../components/ui/alert";
-import { Loader2, MessageCircle, CheckCircle } from "lucide-react";
+import { Loader2, MessageCircle, CheckCircle, ArrowLeft } from "lucide-react";
 import { useForgotPasswordMutation } from "../../services/authService";
 import { useTranslation } from "react-i18next";
 
@@ -29,9 +29,11 @@ export default function ForgotPasswordPage() {
       return;
     }
 
+    // Email validation - simple regex pattern
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError(t("errors.validationFailed"));
+      const msg = t("errors.invalidEmail");
+      setError(msg);
       return;
     }
 
@@ -123,6 +125,13 @@ export default function ForgotPasswordPage() {
             <CardDescription className="text-gray-600 dark:text-muted-foreground">
               {t("auth.loginSubtitle")}
             </CardDescription>
+            <Link
+              to="/"
+              className="text-sm text-indigo-600 hover:text-indigo-800 hover:underline transition-colors flex items-center gap-1 justify-center mt-3"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {t("common.back")} {t("nav.home")}
+            </Link>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -137,6 +146,16 @@ export default function ForgotPasswordPage() {
                   required
                   className="h-11 border-border dark:border-white/30 dark:bg-input dark:text-foreground"
                 />
+                {email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && (
+                  <p className="text-xs text-red-600 mt-1">
+                    ❌ {t("errors.invalidEmail")}
+                  </p>
+                )}
+                {email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ✓ {t("errors.validEmail")}
+                  </p>
+                )}
               </div>
 
               {error && (

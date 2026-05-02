@@ -22,7 +22,9 @@ class ForgotPasswordController extends Controller
             $validator = Validator::make($request->all(), [
                 // Don't use `exists:users,email` here; it produces the confusing message
                 // "The selected email is invalid." We handle "email not found" explicitly below.
-                'email' => ['required', 'email']
+                'email' => ['required', 'email:rfc,dns']
+            ], [
+                'email.email' => 'Please provide a valid email address'
             ]);
 
             if ($validator->fails()) {

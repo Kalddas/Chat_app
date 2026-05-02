@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { MessageCircle, Eye, EyeOff, Loader2, Sparkles, MessageSquareText, Send } from "lucide-react";
+import { MessageCircle, Eye, EyeOff, Loader2, Sparkles, MessageSquareText, Send, ArrowLeft } from "lucide-react";
 import { useLoginMutation } from "../../services/authService";
 import { useAuth } from "../../contexts/AuthContext";
 import { toast } from "react-toastify";
@@ -55,6 +55,15 @@ function LoginForm() {
 
     if (!email || !password) {
       setError(t("errors.validationFailed"));
+      return;
+    }
+
+    // Email validation - simple regex pattern
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      const msg = t("errors.invalidEmail");
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -142,10 +151,21 @@ function LoginForm() {
         <Card className=" border-0 rounded-2xl overflow-hidden shadow-none">
           {/* <div className="bg-gradient-indigo-purple h-2 w-full"></div> */}
           <CardHeader className="pb-4">
-            <CardTitle className="text-2xl text-card-foreground">{t("auth.loginTitle")}</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              {t("auth.loginSubtitle")}
-            </CardDescription>
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <CardTitle className="text-2xl text-card-foreground">{t("auth.loginTitle")}</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  {t("auth.loginSubtitle")}
+                </CardDescription>
+              </div>
+              <Link
+                to="/"
+                className="text-sm text-indigo-600 hover:text-indigo-800 hover:underline transition-colors flex items-center gap-1"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                {t("nav.home")}
+              </Link>
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -163,6 +183,16 @@ function LoginForm() {
                   autoComplete="email"
                   className="rounded-lg py-5 border-border focus:border-indigo-500 focus:ring-indigo-500"
                 />
+                {email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && (
+                  <p className="text-xs text-red-600 mt-1">
+                    ❌ {t("errors.invalidEmail")}
+                  </p>
+                )}
+                {email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ✓ {t("errors.validEmail")}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

@@ -15,8 +15,10 @@ class LoginController extends Controller
     {
         try {
             $credentials = $request->validate([
-                'email' => ['required', 'email'],
+                'email' => ['required', 'email:rfc,dns'],
                 'password' => ['required']
+            ], [
+                'email.email' => 'Please provide a valid email address'
             ]);
 
             $user = User::with('profile')->where('email', $credentials['email'])->first();

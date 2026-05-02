@@ -106,7 +106,20 @@ export default function RegisterPage() {
   }, [timeLeft, step]);
 
   // Handlers
-  const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    
+    // Phone number validation: only digits, max 10
+    if (name === 'phone') {
+      const digitsOnly = value.replace(/\D/g, '');
+      if (digitsOnly.length <= 10) {
+        setFormData({ ...formData, [name]: digitsOnly });
+      }
+      return;
+    }
+    
+    setFormData({ ...formData, [name]: value });
+  };
 
   const handleTagToggle = (tagId) => {
     setSelectedTags(prev =>
@@ -124,6 +137,33 @@ export default function RegisterPage() {
       toast.error(msg);
       return;
     }
+    
+    // Email validation - simple regex pattern
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      const msg = t("errors.invalidEmail");
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+    
+    // Phone validation
+    if (formData.phone && formData.phone.length !== 10) {
+      const msg = t("errors.phoneMustBe10Digits");
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+    
+    // Password strength validation
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+    if (!passwordRegex.test(formData.password)) {
+      const msg = t("errors.passwordTooWeak");
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+    
     if (formData.password !== formData.confirmPassword) {
       const msg = t("auth.passwordsDoNotMatch");
       setError(msg);
@@ -266,10 +306,21 @@ export default function RegisterPage() {
           <>
             <Card className="border-0 rounded-2xl overflow-hidden shadow-none">
               <CardHeader className="pb-4">
-                <CardTitle className="text-2xl text-card-foreground">{t("auth.signUp")}</CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  {step === "info" ? t("auth.enterYourDetails") : t("auth.chooseInterests")}
-                </CardDescription>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <CardTitle className="text-2xl text-card-foreground">{t("auth.signUp")}</CardTitle>
+                    <CardDescription className="text-muted-foreground">
+                      {step === "info" ? t("auth.enterYourDetails") : t("auth.chooseInterests")}
+                    </CardDescription>
+                  </div>
+                  <Link
+                    to="/"
+                    className="text-sm text-indigo-600 hover:text-indigo-800 hover:underline transition-colors flex items-center gap-1"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    {t("nav.home")}
+                  </Link>
+                </div>
               </CardHeader>
               <CardContent>
                 <form onSubmit={step === "info" ? handleNext : handleRegister} className="space-y-4">
@@ -312,14 +363,33 @@ export default function RegisterPage() {
                         autoComplete="email"
                         className="rounded-lg border-border dark:border-white/30 focus:border-indigo-500 focus:ring-indigo-500"
                       />
+                      {formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && (
+                        <p className="text-xs text-red-600 mt-1">
+                          ❌ {t("errors.invalidEmail")}
+                        </p>
+                      )}
+                      {formData.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && (
+                        <p className="text-xs text-green-600 mt-1">
+                          ✓ {t("errors.validEmail")}
+                        </p>
+                      )}
                       <Input
                         name="phone"
+                        type="tel"
                         placeholder={t("auth.phoneNumberPlaceholder")}
                         value={formData.phone}
                         onChange={handleInputChange}
                         required
+                        maxLength={10}
+                        pattern="[0-9]{10}"
+                        title={t("errors.phoneMustBe10Digits")}
                         className="rounded-lg border-border dark:border-white/30 focus:border-indigo-500 focus:ring-indigo-500"
                       />
+                      {formData.phone && formData.phone.length < 10 && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          {t("errors.phoneDigitsRequired", { count: 10 - formData.phone.length })}
+                        </p>
+                      )}
                       <Input
                         name="bio"
                         placeholder={t("auth.bioOptional")}
@@ -349,6 +419,25 @@ export default function RegisterPage() {
                           {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                         </Button>
                       </div>
+                      {formData.password && (
+                        <div className="text-xs space-y-1">
+                          <p className={formData.password.length >= 8 ? "text-green-600" : "text-amber-600"}>
+                            • {t("errors.passwordMinLength")}
+                          </p>
+                          <p className={/[A-Z]/.test(formData.password) ? "text-green-600" : "text-amber-600"}>
+                            • {t("errors.passwordUppercase")}
+                          </p>
+                          <p className={/[a-z]/.test(formData.password) ? "text-green-600" : "text-amber-600"}>
+                            • {t("errors.passwordLowercase")}
+                          </p>
+                          <p className={/\d/.test(formData.password) ? "text-green-600" : "text-amber-600"}>
+                            • {t("errors.passwordNumber")}
+                          </p>
+                          <p className={/[@$!%*?&#]/.test(formData.password) ? "text-green-600" : "text-amber-600"}>
+                            • {t("errors.passwordSpecialChar")}
+                          </p>
+                        </div>
+                      )}
                       <div className="relative">
                         <Input
                           name="confirmPassword"

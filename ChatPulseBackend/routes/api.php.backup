@@ -1,0 +1,29 @@
+# This is just a marker file to remind you to restart the server
+
+## IMPORTANT: RESTART REQUIRED
+
+The changes to fix video sending will NOT work until you:
+
+1. **STOP** the Laravel server (Ctrl+C in the terminal where it's running)
+2. **CLEAR** the cache:
+   ```
+   php artisan config:clear
+   php artisan cache:clear
+   ```
+3. **RESTART** the server:
+   ```
+   php artisan serve
+   ```
+
+## Current Status
+- ✅ Code changes applied
+- ✅ .env updated (BROADCAST_DRIVER=log)
+- ✅ ChatEvent simplified
+- ✅ Broadcast disabled in ChatController
+- ❌ Server NOT restarted yet (changes not active)
+
+## Error You're Seeing
+`ERR_CONNECTION_RESET` - This means the server is crashing when processing the request.
+
+## Why It's Happening
+The old code is still running in memory. The server needs to be restarted to load the new code.

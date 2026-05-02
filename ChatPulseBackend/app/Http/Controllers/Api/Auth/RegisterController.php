@@ -20,15 +20,25 @@ class RegisterController extends Controller
     {
         try {
             $attributes = request()->validate([
-                'email' => ['required', 'email', 'unique:users,email'],
-                'password' => ['required', 'string', 'min:8', 'confirmed'],
+                'email' => ['required', 'email:rfc', 'unique:users,email'],
+                'password' => [
+                    'required', 
+                    'string', 
+                    'min:8', 
+                    'confirmed',
+                    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/'
+                ],
                 'user_name' => ['required', 'string', 'unique:user_profiles,user_name'],
                 'first_name' => ['nullable', 'string', 'max:255'],
                 'last_name' => ['nullable', 'string', 'max:255'],
                 'bio' => ['required', 'string'],
-                'phone' => ['required', 'string','unique:user_profiles,phone'],
+                'phone' => ['required', 'string', 'digits:10', 'unique:user_profiles,phone'],
                 'tags' => ['required', 'array'],
                 'tags.*' => ['exists:tags,id']
+            ], [
+                'email.email' => 'Please provide a valid email address',
+                'password.regex' => 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#)',
+                'phone.digits' => 'Phone number must be exactly 10 digits'
             ]);
 
             $user = User::create([
@@ -52,11 +62,15 @@ class RegisterController extends Controller
             $user->tags()->attach($attributes['tags'], ['weight' => 1.0]);
 
             $otpService->sendOtp($user);
-            //find matches immediately for the new user
-            app(MatchingService::class)->findAndStoreMatches($user);
+            
+            // TODO: Move to queue for better performance
+            // dispatch(new FindMatchesJob($user));
+            
+            //find matches immediately for the new user (can be slow with many users)
+            // app(MatchingService::class)->findAndStoreMatches($user);
             
             // Also find matches for existing users who might match with this new user
-            $this->findMatchesForExistingUsers($user);
+            // $this->findMatchesForExistingUsers($user);
 
             return response()->json([
                 'message' => 'User successfully registered. Please verify your email with the OTP sent.',
