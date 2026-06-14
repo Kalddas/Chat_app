@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { MessageCircle, Menu, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { changeLanguage, AVAILABLE_LANGUAGES } from "@/i18n";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Header = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -18,39 +19,40 @@ const Header = () => {
     };
 
     return (
-        <header className="sticky top-0 z-50 w-full px-4 border-b border-amber-200 bg-amber-50/95 backdrop-blur supports-[backdrop-filter]:bg-amber-50/60">
+        <header className="sticky top-0 z-50 w-full px-4 border-b border-amber-200 dark:border-white/10 bg-amber-50/95 dark:bg-[#344055]/95 backdrop-blur supports-[backdrop-filter]:bg-amber-50/60 dark:supports-[backdrop-filter]:bg-[#344055]/90">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
                     {/* Logo */}
                     <div className="flex-shrink-0 flex-row flex items-center gap-2">
                         <div className="relative">
-                            <MessageCircle className="h-8 w-8 text-indigo-600" />
+                            <MessageCircle className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
                             <div className="absolute -top-1 -right-1 w-3 h-3 bg-indigo-500 rounded-full"></div>
                         </div>
-                        <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">LiveFlow</h1>
+                        <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">LiveFlow</h1>
                     </div>
 
                     {/* Navigation - Desktop */}
                     <nav className="hidden md:block">
                         <div className="ml-10 flex items-baseline space-x-8">
-                            <a href="#" className="text-indigo-900 hover:text-indigo-600 px-3 py-2 text-sm font-medium transition-colors">
+                            <a href="#" className="text-indigo-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-300 px-3 py-2 text-sm font-medium transition-colors">
                                 {t("nav.home")}
                             </a>
-                            <a href="#features" className="text-indigo-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium transition-colors">
+                            <a href="#features" className="text-indigo-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-white px-3 py-2 text-sm font-medium transition-colors">
                                 {t("nav.features")}
                             </a>
-                            <a href="#footer" className="text-indigo-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium transition-colors">
+                            <a href="#footer" className="text-indigo-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-white px-3 py-2 text-sm font-medium transition-colors">
                                 {t("nav.contact")}
                             </a>
                         </div>
                     </nav>
 
                     {/* Language + Auth (desktop) */}
-                    <div className="hidden md:flex items-center gap-4">
+                    <div className="hidden md:flex items-center gap-3">
+                        <ThemeToggle className="text-indigo-700 dark:text-white hover:bg-indigo-100 dark:hover:bg-white/10" />
                         <select
                             value={language}
                             onChange={handleLanguageChange}
-                            className="text-sm font-medium border border-indigo-200 bg-white/80 text-indigo-700 rounded-full px-3 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            className="text-sm font-medium border border-indigo-200 dark:border-white/20 bg-white/80 dark:bg-[#2a3548] text-indigo-700 dark:text-white rounded-full px-3 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                         >
                             {AVAILABLE_LANGUAGES.map((lng) => (
                                 <option key={lng.code} value={lng.code}>
@@ -60,7 +62,7 @@ const Header = () => {
                         </select>
                         <Link
                             to="/login"
-                            className="text-sm font-medium text-indigo-700 hover:text-indigo-900 px-3 py-2"
+                            className="text-sm font-medium text-indigo-700 dark:text-white hover:text-indigo-900 dark:hover:text-indigo-300 px-3 py-2"
                         >
                             {t("auth.login")}
                         </Link>
@@ -71,11 +73,11 @@ const Header = () => {
                         </Button>
                     </div>
 
-                    {/* Mobile menu button */}
-                    <div className="md:hidden">
+                    <div className="md:hidden flex items-center gap-2">
+                        <ThemeToggle className="text-indigo-700 dark:text-white hover:bg-indigo-100 dark:hover:bg-white/10" />
                         <button
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            className="text-indigo-700 hover:text-indigo-600"
+                            className="text-indigo-700 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-300"
                         >
                             {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
                         </button>
@@ -84,22 +86,22 @@ const Header = () => {
 
                 {/* Mobile Navigation */}
                 {isMenuOpen && (
-                    <div className="md:hidden py-4 border-t border-indigo-100">
+                    <div className="md:hidden py-4 border-t border-indigo-100 dark:border-white/20">
                         <div className="flex flex-col space-y-3">
-                            <a href="#" className="text-indigo-900 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
+                            <a href="#" className="text-indigo-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-300 px-3 py-2 text-sm font-medium">
                                 {t("nav.home")}
                             </a>
-                            <a href="#features" className="text-indigo-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
+                            <a href="#features" className="text-indigo-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-white px-3 py-2 text-sm font-medium">
                                 {t("nav.features")}
                             </a>
-                            <a href="#footer" className="text-indigo-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
+                            <a href="#footer" className="text-indigo-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-white px-3 py-2 text-sm font-medium">
                                 {t("nav.contact")}
                             </a>
                             <div className="flex items-center justify-between px-3 pt-2">
                                 <select
                                     value={language}
                                     onChange={handleLanguageChange}
-                                    className="text-sm font-medium border border-indigo-200 bg-white text-indigo-700 rounded-full px-3 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                    className="text-sm font-medium border border-indigo-200 dark:border-white/20 bg-white dark:bg-[#2a3548] text-indigo-700 dark:text-white rounded-full px-3 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                                 >
                                     {AVAILABLE_LANGUAGES.map((lng) => (
                                         <option key={lng.code} value={lng.code}>
@@ -108,7 +110,7 @@ const Header = () => {
                                     ))}
                                 </select>
                                 <div className="flex items-center gap-2">
-                                    <Link to="/login" className="text-sm font-medium text-indigo-700 hover:text-indigo-900">
+                                    <Link to="/login" className="text-sm font-medium text-indigo-700 dark:text-white hover:text-indigo-900 dark:hover:text-indigo-300">
                                         {t("auth.login")}
                                     </Link>
                                     <Button className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-1.5 rounded-full text-sm font-medium">

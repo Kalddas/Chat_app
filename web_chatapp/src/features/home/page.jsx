@@ -58,7 +58,7 @@ const Home = () => {
     ];
 
     return (
-        <div>
+        <div className="min-h-screen bg-white dark:bg-[#344055]">
             <Header />
             <Hero />
             <Features />

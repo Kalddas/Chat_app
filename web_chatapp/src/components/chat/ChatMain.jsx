@@ -44,6 +44,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const REACTION_EMOJIS = ["❤️", "👍", "🔥", "😂", "😮", "😢", "😡", "🙏", "✅", "✨", "🎉", "💯"];
+const MAX_UPLOAD_BYTES = 500 * 1024 * 1024; // 500MB — must match PHP/Laravel limits
+const MAX_UPLOAD_LABEL = "500MB";
 
 const EMOJI_SETS = {
   Smiles: ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩", "🥳", "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣", "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡", "🤬", "🤯", "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🤔", "🤭", "🤫", "🤥", "😶", "😐", "😑", "😬", "🙄", "😯", "😦", "😧", "😮", "😲", "🥱", "😴", "🤤", "😪", "😵", "🤐", "🥴", "🤢", "🤮", "🤧", "😷", "🤒", "🤕"],
@@ -75,6 +77,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
   const [reportDescription, setReportDescription] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState([]);
+  const [uploadingClientIds, setUploadingClientIds] = useState(new Set());
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
@@ -104,9 +107,14 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
     leaveConversation,
   } = useWebSocket();
 
-  const { data: apiMessages, isLoading, isError } = useGetMessagesQuery(
-    { conversationId: selectedChat },
-    { skip: !selectedChat }
+  const { data: apiMessages, isLoading, isError, refetch: refetchMessages } = useGetMessagesQuery(
+    { conversationId: selectedChat, userId: user?.id },
+    {
+      skip: !selectedChat,
+      // Poll for new messages (videos/attachments) when WebSocket is unavailable
+      refetchInterval: 3000,
+      refetchIntervalInBackground: true,
+    }
   );
 
   const [sendMessage] = useSendMessageMutation();
@@ -163,9 +171,45 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
     };
   }, [resolveFileUrl]);
 
-  // Merge API + WS + current messages
+  // Prefer server attachment URLs over local blob previews when merging
+  const mergeMessagePair = useCallback((prev, incoming) => {
+    if (!prev) return incoming;
+    if (!incoming) return prev;
+
+    const merged = { ...prev, ...incoming };
+    const prevAtts = prev.attachments || [];
+    const incomingAtts = incoming.attachments || [];
+
+    if (incomingAtts.length > 0) {
+      merged.attachments = incomingAtts.map((att, i) => {
+        const prevAtt = prevAtts[i];
+        const preferIncoming = att?.url && !String(att.url).startsWith("blob:");
+        const preferPrev = prevAtt?.url && !String(prevAtt.url).startsWith("blob:");
+        if (preferIncoming) return { ...prevAtt, ...att };
+        if (preferPrev) return { ...prevAtt, ...att, url: prevAtt.url };
+        return { ...prevAtt, ...att };
+      });
+    } else if (prevAtts.length > 0) {
+      merged.attachments = prevAtts;
+    }
+
+    if (incoming.id) {
+      merged.temp = false;
+      merged.failed = false;
+    }
+
+    return merged;
+  }, []);
+
+  // Reset local messages when switching conversations
   useEffect(() => {
-    if (!selectedChat) return;
+    setAllMessages([]);
+    setUploadingClientIds(new Set());
+  }, [selectedChat]);
+
+  // Merge API + WS + optimistic messages
+  useEffect(() => {
+    if (!selectedChat || apiMessages === undefined) return;
 
     const rawApi = Array.isArray(apiMessages) ? apiMessages : (apiMessages?.messages || []);
     const apiMsgs = rawApi.map(normalizeMessage);
@@ -173,17 +217,43 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
       .filter((msg) => msg.conversation_id === selectedChat)
       .map(normalizeMessage);
 
-    const merged = new Map();
-    allMessages.forEach((m) => merged.set(m.id ?? m.clientId, m));
-    [...apiMsgs, ...wsMsgs].forEach((m) =>
-      merged.set(m.id ?? m.clientId, { ...(merged.get(m.id ?? m.clientId) || {}), ...m })
-    );
+    setAllMessages((prev) => {
+      const merged = new Map();
+      prev.forEach((m) => merged.set(m.id ?? m.clientId, m));
+      [...apiMsgs, ...wsMsgs].forEach((m) => {
+        const key = m.id ?? m.clientId;
+        merged.set(key, mergeMessagePair(merged.get(key), m));
+      });
 
-    setAllMessages(Array.from(merged.values()).sort(
-      (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-    ));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiMessages, wsMessages, selectedChat]);
+      // Drop stale temp previews once the server copy exists
+      const values = Array.from(merged.values());
+      const deduped = values.filter((m) => {
+        if (!m.temp) return true;
+        return !values.some(
+          (other) =>
+            other.id &&
+            !other.temp &&
+            other.sender?.id === m.sender?.id &&
+            Math.abs(new Date(other.timestamp) - new Date(m.timestamp)) < 120000
+        );
+      });
+
+      return deduped.sort(
+        (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+      );
+    });
+  }, [apiMessages, wsMessages, selectedChat, normalizeMessage, mergeMessagePair]);
+
+  // Refetch when a lightweight WebSocket notification arrives
+  useEffect(() => {
+    const onNewMessage = (e) => {
+      if (e.detail?.conversation_id === selectedChat) {
+        refetchMessages();
+      }
+    };
+    window.addEventListener("chat:newMessage", onNewMessage);
+    return () => window.removeEventListener("chat:newMessage", onNewMessage);
+  }, [selectedChat, refetchMessages]);
 
   // Join/leave conversation and reset block flags when switching chats
   useEffect(() => {
@@ -333,6 +403,13 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
       return;
     }
 
+    const filesToSend = [...attachedFiles];
+    const oversized = filesToSend.filter((f) => f.size > MAX_UPLOAD_BYTES);
+    if (oversized.length > 0) {
+      toast.error(`File too large (max ${MAX_UPLOAD_LABEL}): ${oversized.map((f) => f.name).join(", ")}`);
+      return;
+    }
+
     const clientId = `temp-${Date.now()}-${Math.random()}`;
     const tempMsg = {
       clientId,
@@ -347,7 +424,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
         sender_name: replyingTo.sender?.name || replyingTo.sender?.first_name || "Unknown"
       } : null,
       // Include local preview URLs so attachments render while "sending"
-      attachments: attachedFiles.map((file) => ({
+      attachments: filesToSend.map((file) => ({
         name: file.name,
         size: file.size,
         type: file.type,
@@ -359,6 +436,7 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
     setAllMessages((prev) => [...prev, tempMsg]);
     setNewMessage("");
     setAttachedFiles([]);
+    setUploadingClientIds((prev) => new Set(prev).add(clientId));
     const currentReplyToId = replyingTo?.id;
     setReplyingTo(null);
 
@@ -367,22 +445,32 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
         conversationId: selectedChat,
         text: tempMsg.message,
         receiver_id: selectedChatInfo?.userId,
-        files: attachedFiles,
+        files: filesToSend,
         reply_to_id: currentReplyToId,
       }).unwrap();
+
+      const confirmed = normalizeMessage(response?.data ?? response);
 
       // Replace temp message with server-confirmed message
       setAllMessages((prev) =>
         prev.map((msg) =>
-          msg.clientId === clientId ? normalizeMessage(response?.data ?? response) : msg
+          msg.clientId === clientId ? confirmed : msg
         )
       );
+      setUploadingClientIds((prev) => {
+        const next = new Set(prev);
+        next.delete(clientId);
+        return next;
+      });
+
+      // Pull fresh messages so attachment URLs come from the API immediately
+      await refetchMessages();
 
       // Optional: send via Echo for live update
       if (isConnected && window.Echo) {
-        window.Echo.private(`conversation.${selectedChat}`).whisper("message.sent", {
-          ...tempMsg,
-          id: response.id ?? clientId,
+        window.Echo.private(`chat.${selectedChat}`).whisper("message.sent", {
+          conversation_id: selectedChat,
+          message_id: response?.data?.id ?? response?.id,
         });
       }
     } catch (err) {
@@ -404,6 +492,11 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
           msg.clientId === clientId ? { ...msg, failed: true } : msg
         )
       );
+      setUploadingClientIds((prev) => {
+        const next = new Set(prev);
+        next.delete(clientId);
+        return next;
+      });
     }
   };
 
@@ -556,15 +649,25 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
       // Filter to only allow images and videos
       const allowedFiles = files.filter(file => {
         const type = file.type.toLowerCase();
-        return type.startsWith('image/') || type.startsWith('video/');
+        const name = file.name.toLowerCase();
+        const isVideoExt = /\.(mp4|webm|ogg|mov|avi|mkv|m4v|wmv)$/i.test(name);
+        return type.startsWith('image/') || type.startsWith('video/') || isVideoExt;
       });
 
       if (allowedFiles.length !== files.length) {
         toast.warning('Only images and videos are allowed. Other file types were ignored.');
       }
 
-      if (allowedFiles.length > 0) {
-        setAttachedFiles(prev => [...prev, ...allowedFiles]);
+      const validFiles = allowedFiles.filter((file) => {
+        if (file.size > MAX_UPLOAD_BYTES) {
+          toast.error(`${file.name} is too large (max ${MAX_UPLOAD_LABEL})`);
+          return false;
+        }
+        return true;
+      });
+
+      if (validFiles.length > 0) {
+        setAttachedFiles(prev => [...prev, ...validFiles]);
       }
     }
     // Reset input so same file can be selected again
@@ -768,14 +871,15 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                               : `http://127.0.0.1:8000/${rawAttachmentUrl.replace(/^\/+/, '')}`)
                             : null;
                           const isImage = att.type?.startsWith('image/') || attachmentUrl?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-                          const isVideo = att.type?.startsWith('video/') || attachmentUrl?.match(/\.(mp4|webm|ogg)$/i);
+                          const isVideo = att.type?.startsWith('video/') || attachmentUrl?.match(/\.(mp4|webm|ogg|mkv|mov|avi|m4v)$/i);
+                          const isUploading = msg.temp || uploadingClientIds.has(msg.clientId);
 
                           return (
                             <div
                               key={`${msg.id ?? msg.clientId}-att-${idx}`}
                               className="rounded overflow-hidden"
                             >
-                              {isImage && attachmentUrl && (
+                              {isImage && attachmentUrl && !isUploading && (
                                 <a href={attachmentUrl} target="_blank" rel="noopener noreferrer" className="block">
                                   <img
                                     src={attachmentUrl}
@@ -784,11 +888,19 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
                                   />
                                 </a>
                               )}
-                              {isVideo && attachmentUrl && (
+                              {isVideo && isUploading && (
+                                <div className="flex items-center gap-2 px-3 py-4 rounded bg-black/20 text-xs">
+                                  <Video className="h-4 w-4 shrink-0" />
+                                  <span>{msg.failed ? "Upload failed" : `Uploading ${att.name || "video"}...`}</span>
+                                </div>
+                              )}
+                              {isVideo && attachmentUrl && !isUploading && (
                                 <video
+                                  key={attachmentUrl}
                                   src={attachmentUrl}
                                   controls
-                                  className="max-w-full max-h-64 rounded"
+                                  preload="metadata"
+                                  className="max-w-full max-h-64 rounded bg-black"
                                 >
                                   Your browser does not support the video tag.
                                 </video>

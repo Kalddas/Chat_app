@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import echo from "../services/echo";
-import { useNavigate } from "react-router-dom";
+import { getEcho, disconnectEcho } from "../services/echo";
 import { useAuth } from "@/contexts/AuthContext";
 
 const WebSocketContext = createContext();
@@ -15,60 +14,80 @@ export const WebSocketProvider = ({ children }) => {
   const { user } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [connectionState, setConnectionState] = useState("disconnected");
-  const [messages, setMessages] = useState({}); // { conversationId: [messages] }
-  const [typingUsers, setTypingUsers] = useState({}); // { conversationId: [userIds] }
+  const [messages, setMessages] = useState({});
+  const [typingUsers, setTypingUsers] = useState({});
   const [currentChannel, setCurrentChannel] = useState(null);
-  const navigate = useNavigate();
 
-  // Handle connection status
+  // Only connect WebSocket when user is logged in (Soketi optional)
   useEffect(() => {
-    const connection = echo.connector.pusher.connection;
-    connection.bind("connected", () => {
-      setIsConnected(true);
-      setConnectionState("connected");
-    });
-    connection.bind("connecting", () => setConnectionState("connecting"));
-    connection.bind("disconnected", () => {
+    if (!user?.id) {
+      disconnectEcho();
       setIsConnected(false);
       setConnectionState("disconnected");
+      return;
+    }
+
+    const echo = getEcho();
+    if (!echo) return;
+
+    const connection = echo.connector.pusher.connection;
+
+    const onConnected = () => {
+      setIsConnected(true);
+      setConnectionState("connected");
+    };
+    const onConnecting = () => setConnectionState("connecting");
+    const onDisconnected = () => {
+      setIsConnected(false);
+      setConnectionState("disconnected");
+    };
+
+    connection.bind("connected", onConnected);
+    connection.bind("connecting", onConnecting);
+    connection.bind("disconnected", onDisconnected);
+
+    if (connection.state === "connected") onConnected();
+
+    return () => {
+      connection.unbind("connected", onConnected);
+      connection.unbind("connecting", onConnecting);
+      connection.unbind("disconnected", onDisconnected);
+      disconnectEcho();
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    const echo = getEcho();
+    if (!isConnected || !user?.id || !echo) return;
+
+    const notificationChannel = `App.Models.User.${user.id}`;
+
+    echo.private(notificationChannel).notification((notification) => {
+      window.dispatchEvent(new CustomEvent("chat:newNotification", { detail: notification }));
     });
 
-    return () => echo.disconnect();
-  }, []);
-
-  // Listen for user notifications
-  useEffect(() => {
-    if (isConnected && user?.id) {
-      const notificationChannel = `App.Models.User.${user.id}`;
-      console.log(`Subscribing to notifications on ${notificationChannel}`);
-
-      echo.private(notificationChannel).notification((notification) => {
-        console.log("New notification received via WebSocket:", notification);
-        // Dispatch a custom event so other components can react
-        window.dispatchEvent(new CustomEvent("chat:newNotification", { detail: notification }));
-      });
-
-      return () => {
-        console.log(`Leaving notification channel ${notificationChannel}`);
-        echo.leave(notificationChannel);
-      };
-    }
+    return () => {
+      echo.leave(notificationChannel);
+    };
   }, [isConnected, user?.id]);
 
-  // Join a conversation channel
   const joinConversation = useCallback((conversationId) => {
+    const echo = getEcho();
     if (!echo || !conversationId) return;
 
-    const channelName = `private-conversation.${conversationId}`;
+    const channelName = `chat.${conversationId}`;
 
     if (currentChannel) echo.leave(currentChannel);
 
     const channel = echo.private(channelName);
 
-    channel.listen(".MessageSent", (e) => {
-      setMessages((prev) => ({
-        ...prev,
-        [conversationId]: [...(prev[conversationId] || []), e.message],
+    channel.listen(".message.sent", (payload) => {
+      window.dispatchEvent(new CustomEvent("chat:newMessage", {
+        detail: {
+          conversation_id: payload.conversation_id ?? conversationId,
+          message_id: payload.message_id,
+          has_attachments: payload.has_attachments,
+        },
       }));
     });
 
@@ -83,8 +102,9 @@ export const WebSocketProvider = ({ children }) => {
   }, [currentChannel]);
 
   const leaveConversation = useCallback((conversationId) => {
-    const channelName = conversationId ? `private-conversation.${conversationId}` : currentChannel;
-    if (!channelName) return;
+    const echo = getEcho();
+    const channelName = conversationId ? `chat.${conversationId}` : currentChannel;
+    if (!echo || !channelName) return;
 
     echo.leave(channelName);
     setTypingUsers((prev) => ({ ...prev, [conversationId]: [] }));
@@ -92,10 +112,10 @@ export const WebSocketProvider = ({ children }) => {
   }, [currentChannel]);
 
   const sendMessage = useCallback((conversationId, messageText) => {
+    const echo = getEcho();
     if (!echo) return false;
     try {
-      echo.private(`private-conversation.${conversationId}`)
-        .whisper("message", { message: messageText });
+      echo.private(`chat.${conversationId}`).whisper("message", { message: messageText });
       return true;
     } catch (err) {
       console.error("WebSocket send failed", err);
@@ -104,8 +124,9 @@ export const WebSocketProvider = ({ children }) => {
   }, []);
 
   const sendTyping = useCallback((conversationId, userId) => {
+    const echo = getEcho();
     if (!echo) return;
-    echo.private(`private-conversation.${conversationId}`).whisper("typing", { userId });
+    echo.private(`chat.${conversationId}`).whisper("typing", { userId });
   }, []);
 
   const getMessagesForConversation = (conversationId) => messages[conversationId] || [];

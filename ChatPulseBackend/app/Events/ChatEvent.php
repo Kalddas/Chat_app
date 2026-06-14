@@ -2,9 +2,7 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -36,9 +34,29 @@ class ChatEvent implements ShouldBroadcast
     {
         return [
             new PrivateChannel('chat.' . $this->message->conversation_id),
-            new PresenceChannel('presence-chat.' . $this->message->conversation_id),
-            new Channel('public-chat')
-
         ];
+    }
+
+    /**
+     * Lightweight payload only — never send file data over WebSocket.
+     */
+    public function broadcastWith(): array
+    {
+        $attachmentCount = $this->message->relationLoaded('attachments')
+            ? $this->message->attachments->count()
+            : $this->message->attachments()->count();
+
+        return [
+            'message_id' => $this->message->id,
+            'conversation_id' => $this->message->conversation_id,
+            'sender_id' => $this->message->sender_id,
+            'has_attachments' => $attachmentCount > 0,
+            'attachment_count' => $attachmentCount,
+        ];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'message.sent';
     }
 }

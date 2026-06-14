@@ -145,8 +145,9 @@ class ChatController extends Controller
                 }
             }
 
-            // Broadcast event (do not fail the request if broadcasting fails locally)
+            // Broadcast lightweight notification (safe for large video uploads)
             try {
+                $message->loadCount('attachments');
                 event(new ChatEvent($message));
             } catch (\Throwable $broadcastException) {
                 Log::warning('Broadcast failed (non-fatal): ' . $broadcastException->getMessage());

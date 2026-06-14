@@ -148,8 +148,15 @@ export default function RegisterPage() {
     }
     
     // Phone validation
-    if (formData.phone && formData.phone.length !== 10) {
+    if (!formData.phone || formData.phone.length !== 10) {
       const msg = t("errors.phoneMustBe10Digits");
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    if (!formData.bio?.trim()) {
+      const msg = t("auth.bioRequired");
       setError(msg);
       toast.error(msg);
       return;
@@ -201,6 +208,21 @@ export default function RegisterPage() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+
+    if (selectedTags.length === 0) {
+      const msg = t("auth.selectAtLeastOneTag");
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    if (!formData.bio?.trim()) {
+      const msg = t("auth.bioRequired");
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
     try {
       await register({
         email: formData.email,
@@ -210,7 +232,7 @@ export default function RegisterPage() {
         last_name: formData.lastName,
         user_name: formData.username,
         phone: formData.phone,
-        bio: formData.bio || "",
+        bio: formData.bio.trim(),
         tags: selectedTags,
       }).unwrap();
       setStep("otp");
@@ -220,18 +242,13 @@ export default function RegisterPage() {
     catch (err) {
       if (err?.data?.errors) {
         const errors = err.data.errors;
-
-        if (errors.phone) {
-          console.error("Phone error:", errors.phone[0]);
-          toast.error(errors.phone[0]);
-        }
-        if (errors.tags) {
-          console.error("Tags error:", errors.tags[0]);
-          toast.error(errors.tags[0]);
-        }
+        const messages = Object.values(errors).flat();
+        const summary = messages.join(" ");
+        setError(summary);
+        messages.forEach((msg) => toast.error(msg));
       } else {
         console.error("Unexpected error:", err);
-        const msg = err.data?.message || t("auth.registrationFailed");
+        const msg = err.data?.message || err.data?.messages || t("auth.registrationFailed");
         setError(msg);
         toast.error(msg);
       }
@@ -392,9 +409,10 @@ export default function RegisterPage() {
                       )}
                       <Input
                         name="bio"
-                        placeholder={t("auth.bioOptional")}
+                        placeholder={t("auth.bioRequiredPlaceholder")}
                         value={formData.bio}
                         onChange={handleInputChange}
+                        required
                         autoComplete="additional-name"
                         className="rounded-lg border-border dark:border-white/30 focus:border-indigo-500 focus:ring-indigo-500"
                       />

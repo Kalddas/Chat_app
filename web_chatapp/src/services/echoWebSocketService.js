@@ -1,4 +1,4 @@
-import echo from './echo';
+import { getEcho } from './echo';
 
 class EchoWebSocketService {
     constructor() {
@@ -12,6 +12,8 @@ class EchoWebSocketService {
     connect(userId, token) {
         this.userId = userId;
         this.token = token;
+        const echo = getEcho();
+        if (!echo) return;
         
         console.log('Connecting to local Laravel Echo Soketi...', {
             wsHost: '127.0.0.1',

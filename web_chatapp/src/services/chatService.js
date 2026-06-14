@@ -56,34 +56,42 @@ export const chatApi = createApi({
       invalidatesTags: ["Chat"],
     }),
     sendMessage: builder.mutation({
-      query: ({ conversationId, receiver_id, text, files, reply_to_id }) => {
-        // If files are provided, send multipart/form-data
+      async queryFn(args, _api, _extra, baseQuery) {
+        const { conversationId, receiver_id, text, files, reply_to_id } = args;
+
         if (files && files.length) {
           const formData = new FormData();
-          if (text && text.trim()) {
-            formData.append("text", text);
-          }
+          if (text && text.trim()) formData.append("text", text);
           formData.append("receiver_id", receiver_id);
-          if (reply_to_id) {
-            formData.append("reply_to_id", reply_to_id);
-          }
-          files.forEach((file) => {
-            formData.append("attachments[]", file);
-          });
+          if (reply_to_id) formData.append("reply_to_id", reply_to_id);
+          files.forEach((file) => formData.append("attachments[]", file));
 
-          return {
-            url: `chat/conversations/${conversationId}/messages/send`,
-            method: "POST",
-            body: formData,
-          };
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 1200000);
+
+          try {
+            const result = await baseQuery({
+              url: `chat/conversations/${conversationId}/messages/send`,
+              method: "POST",
+              body: formData,
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            if (result.error) return { error: result.error };
+            return { data: result.data };
+          } catch (err) {
+            clearTimeout(timeoutId);
+            return { error: { status: "FETCH_ERROR", error: String(err) } };
+          }
         }
 
-        // Fallback: simple JSON body for text-only messages
-        return {
+        const result = await baseQuery({
           url: `chat/conversations/${conversationId}/messages/send`,
           method: "POST",
           body: { text, receiver_id, reply_to_id },
-        };
+        });
+        if (result.error) return { error: result.error };
+        return { data: result.data };
       },
       invalidatesTags: ["Chat"],
     }),
