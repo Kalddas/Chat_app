@@ -4,15 +4,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { getMoodEmoji, isMoodFresh } from "@/lib/mood";
+import { formatOnlineStatus } from "@/lib/onlineStatus";
 import { useGetAllConversationsQuery } from "../../../services/chatService";
-import { useWebSocket } from "../../../contexts/WebSocketContext";
 import { useChatsContext } from "../../../contexts/ChatsContext";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function ChatsView({ searchQuery, selectedChat, onChatSelect }) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { onlineUsers, connectionState } = useWebSocket();
   const userId = user?.id;
   const resolveAvatarUrl = (url) => {
     if (!url) return "/placeholder.svg";
@@ -30,16 +29,10 @@ export function ChatsView({ searchQuery, selectedChat, onChatSelect }) {
   } = useGetAllConversationsQuery(
     { userId },
     {
-      pollingInterval: 30000,
+      pollingInterval: 10000,
       skip: !userId, // Avoid calling API with undefined user
     }
   );
-
-  useEffect(() => {
-    if (connectionState === "connected" && userId) {
-      refetch();
-    }
-  }, [connectionState, userId, refetch]);
 
   useEffect(() => {
     if (userId) {
@@ -47,11 +40,12 @@ export function ChatsView({ searchQuery, selectedChat, onChatSelect }) {
     }
   }, [refreshTrigger, userId, refetch]);
 
-  const chats = data?.conversations?.map(chat => {
+  const chats = (data?.user_id === userId ? data?.conversations : null)?.map(chat => {
     const otherUser = chat.user;
     const mood = otherUser?.mood ?? null;
     const moodUpdatedAt = otherUser?.mood_updated_at ?? null;
     const moodEmoji = mood && isMoodFresh(moodUpdatedAt) ? getMoodEmoji(mood) : null;
+    const isOnline = Boolean(otherUser?.is_online);
     return {
       id: chat.conversation_id,
       name: `${otherUser?.first_name ?? ''} ${otherUser?.last_name ?? ''}`.trim() || (otherUser?.user_name ?? 'Unknown'),
@@ -61,7 +55,8 @@ export function ChatsView({ searchQuery, selectedChat, onChatSelect }) {
       lastMessage: chat.last_message ? (chat.last_message.message || "") : "No messages yet",
       timestamp: chat.last_message?.sent_at || chat.last_message_time,
       unreadCount: chat.unread_count || 0,
-      isOnline: onlineUsers?.has(otherUser?.id),
+      isOnline,
+      onlineStatus: formatOnlineStatus(isOnline, t),
       userId: otherUser?.id,
       mood,
       moodUpdatedAt,
@@ -121,7 +116,7 @@ export function ChatsView({ searchQuery, selectedChat, onChatSelect }) {
                       {chat.moodEmoji}
                     </div>
                   )}
-                  {chat.isOnline && connectionState === "connected" && (
+                  {chat.isOnline && (
                     <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-background"></div>
                   )}
                 </div>

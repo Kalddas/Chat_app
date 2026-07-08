@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, Smile, Flag, MoreVertical, Paperclip, Mic, Square, X, Video, Reply, Edit2, Trash2, ChevronDown } from "lucide-react";
-import { useGetMessagesQuery, useSendMessageMutation, useAddReactionMutation, useEditMessageMutation, useDeleteMessageMutation, useMarkAsReadMutation } from "../../services/chatService";
+import { useGetMessagesQuery, useSendMessageMutation, useAddReactionMutation, useEditMessageMutation, useDeleteMessageMutation, useMarkAsReadMutation, useGetAllConversationsQuery } from "../../services/chatService";
 import { useSubmitReportMutation } from "../../services/reportService";
 import { useWebSocket } from "../../contexts/WebSocketContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGetUserProfileQuery } from "../../services/userService";
 import { toast } from "react-toastify";
 import { getMoodEmoji, getFormattedMoodSentence, isMoodFresh } from "@/lib/mood";
+import { formatOnlineStatus } from "@/lib/onlineStatus";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -101,11 +102,28 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
 
   const {
     messages: wsMessages,
-    connectionState,
     isConnected,
     joinConversation,
     leaveConversation,
   } = useWebSocket();
+
+  const { data: conversationsData } = useGetAllConversationsQuery(
+    { userId: user?.id },
+    { skip: !user?.id || !selectedChat, pollingInterval: 10000 }
+  );
+
+  const contactOnlineStatus = useMemo(() => {
+    const conv = conversationsData?.conversations?.find(
+      (c) => c.conversation_id === selectedChat
+    );
+    const isOnline = conv?.user
+      ? Boolean(conv.user.is_online)
+      : Boolean(selectedChatInfo?.isOnline);
+    return {
+      isOnline,
+      label: formatOnlineStatus(isOnline, t),
+    };
+  }, [conversationsData, selectedChat, selectedChatInfo, t]);
 
   const { data: apiMessages, isLoading, isError, refetch: refetchMessages } = useGetMessagesQuery(
     { conversationId: selectedChat, userId: user?.id },
@@ -784,8 +802,8 @@ export function ChatMain({ selectedChat, selectedChatInfo, onContactInfoClick })
             {otherMoodSentence && (
               <p className="text-sm text-gray-600 dark:text-muted-foreground">{otherMoodSentence}</p>
             )}
-            <p className={`text-sm ${connectionState === "connected" ? "text-green-500" : "text-red-500"}`}>
-              {connectionState === "connected" ? "Online" : "Offline"}
+            <p className={`text-sm ${contactOnlineStatus.isOnline ? "text-green-500" : "text-gray-500 dark:text-muted-foreground"}`}>
+              {contactOnlineStatus.label}
             </p>
           </div>
         </div>

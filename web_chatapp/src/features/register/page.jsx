@@ -269,20 +269,13 @@ export default function RegisterPage() {
       const data = await verifyOtp({ email: formData.email, otp: otpString }).unwrap();
 
       if (data.user && data.token) {
-        authLogin({ user: data.user, token: data.token });
-      } else {
-        localStorage.setItem("token", data.token);
-        if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
+        await authLogin({ user: data.user, token: data.token });
       }
       setStep("success");
       toast.success(t("auth.accountVerifiedSuccess"));
 
       const from = data.user?.role === "admin" ? "/admin" : "/chat";
       navigate(from, { replace: true });
-
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
     } catch (err) {
       const msg = err.data?.message || t("auth.otpVerificationFailed");
       setError(msg);

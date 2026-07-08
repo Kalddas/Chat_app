@@ -24,8 +24,15 @@ export const WebSocketProvider = ({ children }) => {
       disconnectEcho();
       setIsConnected(false);
       setConnectionState("disconnected");
+      setMessages({});
+      setTypingUsers({});
+      setCurrentChannel(null);
       return;
     }
+
+    setMessages({});
+    setTypingUsers({});
+    setCurrentChannel(null);
 
     const echo = getEcho();
     if (!echo) return;

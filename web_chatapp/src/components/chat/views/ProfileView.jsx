@@ -23,24 +23,26 @@ import { MOOD_OPTIONS, getMoodEmoji, getFormattedMoodSentence, isMoodFresh } fro
 
 export function ProfileView({ isOpen, onClose }) {
   const { t } = useTranslation()
-  const { updateUser } = useAuth()
+  const { user, updateUser } = useAuth()
   const { data: profileData, isLoading: profileLoading, error: profileError, refetch: refetchProfile } =
     useGetUserProfileQuery(undefined, {
-      // Refetch on mount but skip if we have cached data to prevent flickering
-      refetchOnMountOrArgChange: false,
+      skip: !user?.id,
+      refetchOnMountOrArgChange: true,
     })
-  console.log("Profile data:", profileData)
-  console.log("Selected tags from profile:", profileData?.selected_tags)
-  console.log("Profile loading:", profileLoading)
-  console.log("Profile error:", profileError)
+  const rawProfile = profileData?.profile
+  const profile =
+    rawProfile && user?.id &&
+    (Number(rawProfile.user_id) === Number(user.id) || Number(rawProfile.id) === Number(user.id))
+      ? rawProfile
+      : null
+  const selectedTags =
+    profile && profileData?.selected_tags ? profileData.selected_tags : []
+
   const { data: tagsData, isLoading: tagsLoading, refetch: refetchTags } =
-    useGetAvailableTagsQuery()
+    useGetAvailableTagsQuery(undefined, { skip: !user?.id })
   const [updateProfile, { isLoading: updating }] = useUpdateProfileMutation()
   const [updateMood, { isLoading: updatingMood }] = useUpdateMoodMutation()
   const [deleteTags, { isLoading: deletingTags }] = useDeleteTagsMutation()
-
-  const profile = profileData?.profile
-  const selectedTags = profileData?.selected_tags || []
 
   const moodKey = profile?.mood
   const moodUpdatedAt = profile?.mood_updated_at
@@ -246,18 +248,15 @@ export function ProfileView({ isOpen, onClose }) {
         Failed to load profile
       </div>
     )
-  if (!profile) return null
+  if (!profile) {
+    return (
+      <div className="p-4 text-center flex items-center justify-center h-full text-indigo-600 dark:text-muted-foreground">
+        <Loader2 className="animate-spin h-6 w-6" />
+      </div>
+    )
+  }
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-background dark:bg-background">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-indigo-900 dark:text-foreground">{t('profile.settings')}</DialogTitle>
-          <DialogDescription className="dark:text-muted-foreground">
-            {t('profile.description')}
-          </DialogDescription>
-        </DialogHeader>
-
+  const profileContent = (
         <div className="space-y-6">
           {success && (
             <Alert className="border-green-200 bg-green-50">
@@ -567,6 +566,26 @@ export function ProfileView({ isOpen, onClose }) {
             </CardContent>
           </Card>
         </div>
+  )
+
+  if (typeof isOpen !== "boolean") {
+    return (
+      <div className="overflow-y-auto h-full p-4 bg-white dark:bg-background">
+        {profileContent}
+      </div>
+    )
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-background dark:bg-background">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold text-indigo-900 dark:text-foreground">{t('profile.settings')}</DialogTitle>
+          <DialogDescription className="dark:text-muted-foreground">
+            {t('profile.description')}
+          </DialogDescription>
+        </DialogHeader>
+        {profileContent}
       </DialogContent>
     </Dialog>
   )

@@ -3,6 +3,7 @@ import Pusher from "pusher-js";
 import axios from "axios";
 
 window.Pusher = Pusher;
+Pusher.logToConsole = false;
 
 let echoInstance = null;
 
@@ -46,7 +47,10 @@ function createEcho() {
   });
 
   instance.connector.pusher.connection.bind("error", (err) => {
-    console.warn("Pusher/Soketi connection error (is Soketi running on port 6001?):", err);
+    // Soketi/Reverb is optional — chat still works via polling
+    if (err?.type !== "PusherError") {
+      console.warn("WebSocket connection issue:", err);
+    }
   });
 
   window.Echo = instance;

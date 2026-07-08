@@ -19,12 +19,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useGetUserProfileQuery } from "../../services/userService"
-import { useLogoutMutation } from "../../services/authService"
-import { useNavigate } from "react-router-dom"
+import { useLogoutSession } from "@/hooks/useLogoutSession"
 
 export function AdminSidebar({ currentView, onViewChange }) {
-  const { user, logout } = useAuth()
-  const { data: profileData, isLoading, error } = useGetUserProfileQuery()
+  const { user } = useAuth()
+  const { data: profileData, isLoading, error } = useGetUserProfileQuery(undefined, {
+    skip: !user?.id,
+  })
   const rawProfile = profileData?.profile
   const profile =
     rawProfile && user?.id && (rawProfile.user_id === user.id || rawProfile.id === user.id)
@@ -32,23 +33,12 @@ export function AdminSidebar({ currentView, onViewChange }) {
       : null
   const [showProfileDialog, setShowProfileDialog] = useState(false)
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
-  const [logoutApi, { isLoading: isLoggingOut }] = useLogoutMutation();
-  const navigate = useNavigate();
+  const { performLogout, isLoggingOut } = useLogoutSession()
 
   const handleLogout = async () => {
-    try {
-      await logoutApi().unwrap();
-    } catch (error) {
-      console.error("Logout API failed:", error);
-    } finally {
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("tokenType");
-      localStorage.removeItem("user");
-      logout();
-      setShowLogoutDialog(false);
-      navigate("/login");
-    }
-  };
+    setShowLogoutDialog(false)
+    await performLogout()
+  }
 
   const navigationItems = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },

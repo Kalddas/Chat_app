@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { Phone, Video, Bell, Lock, Trash2, Loader2, PhoneCall } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -8,13 +8,15 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useGetUserProfileQuery } from "../../../services/userService"
-import { useDeleteConversationMutation, useBlockUserMutation, useUnblockUserMutation } from "../../../services/chatService"
-import { useWebSocket } from "../../../contexts/WebSocketContext"
+import { useDeleteConversationMutation, useBlockUserMutation, useUnblockUserMutation, useGetAllConversationsQuery } from "../../../services/chatService"
 import { useChatsContext } from "../../../contexts/ChatsContext"
+import { useAuth } from "@/contexts/AuthContext"
+import { formatOnlineStatus } from "@/lib/onlineStatus"
 import { toast } from "react-toastify"
 
 export function ContactInfoView({ chatId, selectedChatInfo }) {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const [deleteConversation, { isLoading: deleting }] = useDeleteConversationMutation()
   const [blockUser, { isLoading: blocking }] = useBlockUserMutation()
   const [unblockUser, { isLoading: unblocking }] = useUnblockUserMutation()
@@ -35,21 +37,36 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
 
   // Get current user profile
   const { data: currentUserProfile, isLoading: currentUserLoading } = useGetUserProfileQuery()
-  const { onlineUsers, connectionState } = useWebSocket()
   const { triggerChatsRefresh } = useChatsContext()
+  const { data: conversationsData } = useGetAllConversationsQuery(
+    { userId: user?.id },
+    { skip: !user?.id || !selectedChatInfo?.userId, pollingInterval: 10000 }
+  )
+
+  const liveContactStatus = useMemo(() => {
+    const conv = conversationsData?.conversations?.find(
+      (c) => c.user?.id === selectedChatInfo?.userId
+    );
+    const isOnline = conv?.user
+      ? Boolean(conv.user.is_online)
+      : Boolean(selectedChatInfo?.isOnline);
+    return {
+      isOnline,
+      label: formatOnlineStatus(isOnline, t),
+    };
+  }, [conversationsData, selectedChatInfo, t]);
 
   // Use selectedChatInfo if available, otherwise fallback to mock data
   const contact = selectedChatInfo ? {
     name: selectedChatInfo.name ?? t('errors.notFound'),
     subtitle: `@${selectedChatInfo.username}`,
     avatar: resolveAvatarUrl(selectedChatInfo.avatar),
-    phone: "", // Add phone field to your API if needed
+    phone: "",
     about: selectedChatInfo.bio && selectedChatInfo.bio.trim().length > 0
       ? selectedChatInfo.bio
       : t('profile.noBioAvailable'),
-    lastSeen: (onlineUsers && typeof onlineUsers.has === 'function' && selectedChatInfo?.userId)
-      ? (onlineUsers.has(selectedChatInfo.userId) ? "online" : "offline")
-      : "offline",
+    lastSeen: liveContactStatus.isOnline ? "online" : "offline",
+    statusLabel: liveContactStatus.label,
     userId: selectedChatInfo.userId
   } : {
     name: t('errors.notFound'),
@@ -58,6 +75,7 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
     phone: "",
     about: t('profile.noBioAvailable'),
     lastSeen: "offline",
+    statusLabel: t("common.offline"),
     userId: null
   }
 
@@ -207,7 +225,7 @@ export function ContactInfoView({ chatId, selectedChatInfo }) {
           <div className={`w-2 h-2 rounded-full ${contact.lastSeen === 'online' ? 'bg-green-500' : 'bg-indigo-300 dark:bg-muted-foreground'
             }`}></div>
           <p className="text-xs text-indigo-600 dark:text-muted-foreground">
-            {contact.lastSeen === 'online' ? t('common.online') : t('common.offline')}
+            {contact.statusLabel}
           </p>
         </div>
 

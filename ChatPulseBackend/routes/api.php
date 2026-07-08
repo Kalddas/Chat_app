@@ -198,6 +198,7 @@ Route::prefix('user')->middleware(['auth:sanctum', 'update.last.seen'])->group(f
     
     // Online status routes
     Route::post('/heartbeat', [\App\Http\Controllers\Api\Users\OnlineStatusController::class, 'heartbeat']);
+    Route::post('/offline', [\App\Http\Controllers\Api\Users\OnlineStatusController::class, 'markOffline']);
     Route::get('/status/{userId}', [\App\Http\Controllers\Api\Users\OnlineStatusController::class, 'getStatus']);
 });
 

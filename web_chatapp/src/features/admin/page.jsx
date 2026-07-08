@@ -1,6 +1,7 @@
 import { useAuth } from "../../contexts/AuthContext"
 import { useEffect } from "react"
-import { useNavigate, useLocation, useSearchParams, Link } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
+import LoadingSpinner from "@/components/LoadingSpinner"
 import { AdminLayout } from "../../components/admin/AdminLayout"
 export default function AdminPage() {
   const { user, isLoading } = useAuth()
@@ -26,8 +27,8 @@ export default function AdminPage() {
   }
 
   if (!user || user.role !== "admin") {
-    return null
+    return <LoadingSpinner />
   }
 
-  return <AdminLayout />
+  return <AdminLayout key={user.id} />
 }

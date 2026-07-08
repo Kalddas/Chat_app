@@ -3,80 +3,114 @@
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use App\Models\User;
+use App\Models\Attachment;
 use App\Models\ChatRequest;
 use App\Models\Conversation;
-use App\Models\Messages;
+use App\Models\Message;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class DeleteAccountController extends Controller
 {
     public function deleteAccount(Request $request)
     {
-        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
             'password' => 'required',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
-        $user = Auth::user();
+        $user = $request->user();
 
-        // Verify password
-        if (!\Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
+        $passwordValid = Hash::check($request->password, $user->password);
+        if (!$passwordValid && $user->temporary_password) {
+            $passwordValid = Hash::check($request->password, $user->temporary_password);
+        }
+
+        if (!$passwordValid) {
             return response()->json([
                 'success' => false,
-                'message' => 'Password is incorrect'
+                'message' => 'Password is incorrect',
             ], 400);
         }
 
         try {
-            // Delete related data
-            // Delete chat requests sent by this user
-            ChatRequest::where('sender_id', $user->id)->delete();
-            // Delete chat requests received by this user
-            ChatRequest::where('receiver_id', $user->id)->delete();
+            DB::transaction(function () use ($user) {
+                $userId = $user->id;
 
-            // Delete conversations - get conversation IDs first
-            $conversationIds = $user->conversations()->pluck('conversation_id');
-            
-            // Delete messages in those conversations
-            Messages::whereIn('conversation_id', $conversationIds)->delete();
-            
-            // Delete conversations
-            $user->conversations()->detach();
-            Conversation::whereIn('id', $conversationIds)->delete();
+                $conversationIds = DB::table('conversation_users')
+                    ->where('user_id', $userId)
+                    ->pluck('conversation_id');
 
-            // Delete user profile
-            if ($user->profile) {
-                $user->profile->delete();
-            }
+                $messageIds = Message::where('sender_id', $userId)->pluck('id');
 
-            // Delete user tags relationships
-            $user->tags()->detach();
+                Attachment::whereIn('message_id', $messageIds)->each(function (Attachment $attachment) {
+                    if ($attachment->file_path) {
+                        Storage::disk('public')->delete($attachment->file_path);
+                    }
+                    $attachment->delete();
+                });
 
-            // Delete tokens
-            $user->tokens()->delete();
+                Message::where('sender_id', $userId)->delete();
 
-            // Delete the user account
-            $user->delete();
+                DB::table('conversation_users')->where('user_id', $userId)->delete();
 
-            // Logout
-            Auth::logout();
+                foreach ($conversationIds as $conversationId) {
+                    $remainingParticipants = DB::table('conversation_users')
+                        ->where('conversation_id', $conversationId)
+                        ->count();
+
+                    if ($remainingParticipants === 0) {
+                        Message::where('conversation_id', $conversationId)->delete();
+                        Conversation::where('id', $conversationId)->delete();
+                    }
+                }
+
+                ChatRequest::where('sender_id', $userId)
+                    ->orWhere('receiver_id', $userId)
+                    ->delete();
+
+                if ($user->profile?->profile_image) {
+                    Storage::disk('public')->delete($user->profile->profile_image);
+                }
+
+                $user->tags()->detach();
+                $user->tokens()->delete();
+
+                if ($user->profile) {
+                    $user->profile->delete();
+                }
+
+                if ($user->admin) {
+                    $user->admin->delete();
+                }
+
+                $user->delete();
+            });
 
             return response()->json([
                 'success' => true,
-                'message' => 'Account deleted successfully'
+                'message' => 'Account deleted successfully',
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            Log::error('Failed to delete account', [
+                'user_id' => $user->id ?? null,
+                'message' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete account: ' . $e->getMessage()
+                'message' => 'Failed to delete account. Please try again.',
+                'error' => app()->environment('local') ? $e->getMessage() : null,
             ], 500);
         }
     }

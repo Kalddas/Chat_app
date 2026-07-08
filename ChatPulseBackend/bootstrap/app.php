@@ -36,26 +36,38 @@ return Application::configure(basePath: dirname(__DIR__))
             return $request->is('api/*') || $request->expectsJson();
         });
         
-        // Handle exceptions for API routes
+        // Handle unexpected exceptions for API routes (auth/validation/http errors use Laravel defaults)
         $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
-            if ($request->is('api/*') || $request->expectsJson()) {
-                \Illuminate\Support\Facades\Log::error('Unhandled API exception', [
-                    'message' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => app()->environment('local', 'development') 
-                        ? $e->getMessage() 
-                        : 'An error occurred. Please try again later.',
-                    'error' => app()->environment('local', 'development') ? $e->getMessage() : null,
-                    'error_type' => app()->environment('local', 'development') ? get_class($e) : null,
-                ], 500);
+            if (! ($request->is('api/*') || $request->expectsJson())) {
+                return null;
             }
-            
-            return null; // Let Laravel handle other exceptions normally
+
+            if ($e instanceof \Illuminate\Auth\AuthenticationException) {
+                return null;
+            }
+
+            if ($e instanceof \Illuminate\Validation\ValidationException) {
+                return null;
+            }
+
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpException) {
+                return null;
+            }
+
+            \Illuminate\Support\Facades\Log::error('Unhandled API exception', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => app()->environment('local', 'development')
+                    ? $e->getMessage()
+                    : 'An error occurred. Please try again later.',
+                'error' => app()->environment('local', 'development') ? $e->getMessage() : null,
+                'error_type' => app()->environment('local', 'development') ? get_class($e) : null,
+            ], 500);
         });
     })->create();

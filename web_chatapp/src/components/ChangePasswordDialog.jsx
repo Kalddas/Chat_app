@@ -83,7 +83,11 @@ export default function ChangePasswordDialog({ open, onOpenChange, onPasswordCha
       
       onOpenChange(false);
     } catch (err) {
-      setError(err?.data?.message || t("errors.failedToUpdate"));
+      const errors = err?.data?.errors;
+      const firstFieldError = errors && typeof errors === "object"
+        ? Object.values(errors).flat()[0]
+        : null;
+      setError(firstFieldError || err?.data?.message || t("errors.failedToUpdate"));
     }
   };
 

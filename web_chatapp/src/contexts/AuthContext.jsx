@@ -1,7 +1,24 @@
 // src/contexts/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect } from "react"
+import heartbeatService from "../services/heartbeatService"
+import { resetAllApiCaches, resetDataApiCaches } from "../app/store"
+import { disconnectEcho } from "../services/echo"
 
 const AuthContext = createContext()
+
+function readStoredAuth() {
+    try {
+        const storedUser = localStorage.getItem("user")
+        const storedToken = localStorage.getItem("token")
+        if (storedUser && storedToken) {
+            return { user: JSON.parse(storedUser), token: storedToken }
+        }
+    } catch {
+        localStorage.removeItem("user")
+        localStorage.removeItem("token")
+    }
+    return { user: null, token: null }
+}
 
 export const useAuth = () => {
     const context = useContext(AuthContext)
@@ -12,36 +29,42 @@ export const useAuth = () => {
 }
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null)
-    const [token, setToken] = useState(null)
+    const [initialAuth] = useState(readStoredAuth)
+    const [user, setUser] = useState(initialAuth.user)
+    const [token, setToken] = useState(initialAuth.token)
     const [isLoading, setIsLoading] = useState(false)
 
     const clearAuthStorage = () => {
         localStorage.removeItem("user")
         localStorage.removeItem("token")
-        // Legacy/demo key used elsewhere in the repo; clear to avoid stale UI if referenced
         localStorage.removeItem("chatapp-user")
+        localStorage.removeItem("tokenType")
+        localStorage.removeItem("authToken")
     }
 
     useEffect(() => {
-        // Load user & token from localStorage on app start
-        const storedUser = localStorage.getItem("user")
-        const storedToken = localStorage.getItem("token")
-
-        if (storedUser && storedToken) {
-            setUser(JSON.parse(storedUser)) // ✅ parse instead of stringify
-            setToken(storedToken)
+        if (token) {
+            heartbeatService.start(token)
+        } else {
+            heartbeatService.stop()
         }
-    }, [])
+        return () => heartbeatService.stop()
+    }, [token])
 
     const login = async (data) => {
-        setUser(data.user)
-        setToken(data.token)
         localStorage.setItem("user", JSON.stringify(data.user))
         localStorage.setItem("token", data.token)
+        setUser(data.user)
+        setToken(data.token)
+        resetDataApiCaches()
+        disconnectEcho()
     }
 
-    const logout = () => {
+    const logout = async () => {
+        await heartbeatService.markOffline()
+        heartbeatService.stop()
+        disconnectEcho()
+        resetAllApiCaches()
         setUser(null)
         setToken(null)
         clearAuthStorage()
@@ -56,6 +79,7 @@ export const AuthProvider = ({ children }) => {
     const value = {
         user,
         token,
+        authReady: true,
         login,
         logout,
         updateUser,

@@ -56,6 +56,7 @@
     "passwordPlaceholder": "Enter your password",
     "loggingIn": "Signing In...",
     "forgotPasswordLink": "Forgot your password?",
+    "emailNotRegistered": "No account found with this email. Please check the spelling or sign up first.",
     "noAccountPrompt": "Don't have an account?",
     "rememberPasswordPrompt": "Remember your password?",
     "sendResetLink": "Send Reset Link",

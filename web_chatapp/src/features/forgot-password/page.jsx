@@ -38,20 +38,32 @@ export default function ForgotPasswordPage() {
     }
 
     try {
-      const response = await forgotPassword(email).unwrap();
+      const response = await forgotPassword(email.trim().toLowerCase()).unwrap();
       setTemporaryPassword(response?.data?.temporary_password || "");
       setIsSuccess(true);
+      if (response?.data?.temporary_password) {
+        toast.info(t("auth.emailSendFailedUseThisPassword"));
+      }
     } catch (err) {
-      // RTK Query error structure: err.data contains the response body
       const errorData = err?.data || {};
-      const errorMessage = errorData?.message 
-        || errorData?.error 
-        || err?.message 
-        || (errorData?.errors && typeof errorData.errors === 'object' && errorData.errors.email?.[0])
+      const status = err?.status;
+
+      let errorMessage =
+        errorData?.message
+        || errorData?.error
+        || err?.message
+        || (errorData?.errors?.email?.[0])
         || t("errors.failedToSend");
-      
-      console.error('Forgot password error:', err);
+
+      if (status === 404) {
+        errorMessage = t("auth.emailNotRegistered", {
+          defaultValue: "No account found with this email. Please check the spelling or sign up first.",
+        });
+      }
+
+      console.error("Forgot password error:", err);
       setError(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -160,7 +172,16 @@ export default function ForgotPasswordPage() {
 
               {error && (
                 <Alert variant="destructive" className="border-red-200 bg-red-50">
-                  <AlertDescription className="text-red-800">{error}</AlertDescription>
+                  <AlertDescription className="text-red-800">
+                    {error}
+                    {error.toLowerCase().includes("no account") && (
+                      <span className="block mt-2">
+                        <Link to="/register" className="text-blue-600 hover:underline font-medium">
+                          {t("auth.signUp")}
+                        </Link>
+                      </span>
+                    )}
+                  </AlertDescription>
                 </Alert>
               )}
 

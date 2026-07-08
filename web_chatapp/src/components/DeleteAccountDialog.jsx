@@ -14,11 +14,13 @@ import { Label } from "./ui/label";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { useDeleteAccountMutation } from "../services/authService";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function DeleteAccountDialog({ open, onOpenChange }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  const { logout } = useAuth();
   const [deleteAccount, { isLoading }] = useDeleteAccountMutation();
 
   const handleSubmit = async (e) => {
@@ -32,16 +34,17 @@ export default function DeleteAccountDialog({ open, onOpenChange }) {
 
     try {
       await deleteAccount({ password }).unwrap();
-      
-      // Account deleted successfully - the mutation will handle logout
+
+      await logout();
       onOpenChange(false);
-      
-      // Redirect to home/login after a short delay
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 1000);
+      window.location.href = "/";
     } catch (err) {
-      setError(err?.data?.message || "Failed to delete account");
+      const message =
+        err?.data?.message ||
+        err?.data?.error ||
+        (err?.status === 400 ? "Password is incorrect" : null) ||
+        "Failed to delete account";
+      setError(message);
     }
   };
 

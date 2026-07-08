@@ -18,29 +18,31 @@ class ForgotPasswordController extends Controller
     public function sendResetLinkEmail(Request $request)
     {
         try {
-            // Validate email input
-            $validator = Validator::make($request->all(), [
-                // Don't use `exists:users,email` here; it produces the confusing message
-                // "The selected email is invalid." We handle "email not found" explicitly below.
-                'email' => ['required', 'email:rfc,dns']
+            $email = strtolower(trim($request->input('email', '')));
+
+            // Validate email input (avoid DNS check — it fails offline and blocks valid Gmail addresses)
+            $validator = Validator::make(['email' => $email], [
+                'email' => ['required', 'email:rfc']
             ], [
+                'email.required' => 'Email address is required',
                 'email.email' => 'Please provide a valid email address'
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
+                    'message' => 'Validation failed',
                     'errors' => $validator->errors()
                 ], 422);
             }
 
-            // Find the user
-            $user = User::where('email', $request->email)->first();
+            // Find the user (case-insensitive)
+            $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
 
             if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Email not found'
+                    'message' => 'No account found with this email address. Please check the spelling or sign up first.'
                 ], 404);
             }
 
@@ -81,7 +83,7 @@ class ForgotPasswordController extends Controller
                     'success' => true,
                     'message' => 'Temporary password has been sent to your email address.',
                     'data' => [
-                        'email' => $request->email,
+                        'email' => $user->email,
                         'info' => 'Please check your inbox and use the temporary password to login. You will be required to change it after login.'
                     ]
                 ], 200);
@@ -125,22 +127,26 @@ class ForgotPasswordController extends Controller
                                     strpos($errorMessageLower, 'could not connect') !== false;
 
                 $userMessage = $isConnectionError 
-                    ? 'Cannot connect to email server. Please check your network connection and email configuration. The temporary password has been generated and logged for recovery.'
-                    : 'Failed to send temporary password email. The temporary password has been generated and logged for recovery.';
+                    ? 'Could not send email (mail server unavailable). Use the temporary password shown below to log in.'
+                    : 'Could not send email. Use the temporary password shown below to log in.';
+
+                $isLocal = app()->environment('local', 'development');
 
                 return response()->json([
-                    'success' => false,
+                    'success' => $isLocal,
                     'message' => $userMessage,
-                    'error' => app()->environment('local', 'development') ? $errorMessage : 'Email sending failed',
-                    'error_type' => app()->environment('local', 'development') ? $errorClass : null,
+                    'error' => $isLocal ? $errorMessage : 'Email sending failed',
+                    'error_type' => $isLocal ? $errorClass : null,
                     'data' => [
-                        'email' => $request->email,
+                        'email' => $user->email,
+                        'temporary_password' => $isLocal ? $temporaryPassword : null,
                         'password_generated' => true,
-                        'password_logged' => true,
-                        'log_file' => 'storage/logs/laravel.log',
-                        'info' => 'Check storage/logs/laravel.log for your temporary password'
+                        'email_sent' => false,
+                        'info' => $isLocal
+                            ? 'Use this temporary password to log in, then change your password.'
+                            : 'Password was reset but email could not be sent. Please contact support.',
                     ]
-                ], 500);
+                ], $isLocal ? 200 : 500);
             }
         } catch (\Throwable $outerException) {
             // Catch any exceptions that occur outside the mail try-catch
@@ -167,14 +173,22 @@ class ForgotPasswordController extends Controller
      */
     private function generateTemporaryPassword($length = 12)
     {
-        $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        $password = '';
-        $max = strlen($characters) - 1;
+        $lower = 'abcdefghijklmnopqrstuvwxyz';
+        $upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $digits = '0123456789';
+        $special = '@$!%*?&#';
+        $all = $lower . $upper . $digits . $special;
 
-        for ($i = 0; $i < $length; $i++) {
-            $password .= $characters[random_int(0, $max)];
+        // Guarantee password meets login/change requirements
+        $password = $lower[random_int(0, strlen($lower) - 1)]
+            . $upper[random_int(0, strlen($upper) - 1)]
+            . $digits[random_int(0, strlen($digits) - 1)]
+            . $special[random_int(0, strlen($special) - 1)];
+
+        for ($i = 4; $i < $length; $i++) {
+            $password .= $all[random_int(0, strlen($all) - 1)];
         }
 
-        return $password;
+        return str_shuffle($password);
     }
 }

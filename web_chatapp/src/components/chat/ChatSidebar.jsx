@@ -25,7 +25,7 @@ import { DiscoveryView } from "./views/DiscoveryView"
 import { RequestsView } from "./views/RequestsView"
 import { ProfileView } from "./views/ProfileView"
 import { SettingsView } from "./views/SettingsView"
-import { useLogoutMutation } from "../../services/authService"
+import { useLogoutSession } from "@/hooks/useLogoutSession"
 import { useGetUserProfileQuery } from "../../services/userService"
 import { useGetAllConversationsQuery, useGetReceivedRequestsQuery } from "../../services/chatService"
 import { useTheme } from "@/contexts/ThemeContext"
@@ -33,10 +33,10 @@ import { Badge } from "@/components/ui/badge"
 
 export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSelect }) {
   const { t } = useTranslation()
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
-  const [logoutApi, { isLoading: isLoggingOut }] = useLogoutMutation();
+  const { performLogout, isLoggingOut } = useLogoutSession()
 
   const {
     data: profileData,
@@ -47,7 +47,8 @@ export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSel
   })
   const rawProfile = profileData?.profile
   const profile =
-    rawProfile && user?.id && (rawProfile.user_id === user.id || rawProfile.id === user.id)
+    rawProfile && user?.id &&
+    (Number(rawProfile.user_id) === Number(user.id) || Number(rawProfile.id) === Number(user.id))
       ? rawProfile
       : null
 
@@ -101,17 +102,9 @@ export function ChatSidebar({ currentView, onViewChange, selectedChat, onChatSel
   if (!user) return null
 
   const handleLogout = async () => {
-    try {
-      await logoutApi().unwrap();
-    } catch (error) {
-      console.error("Logout API failed:", error);
-    } finally {
-      localStorage.removeItem("tokenType");
-      localStorage.removeItem("user");
-      logout();
-      setShowLogoutDialog(false);
-    }
-  };
+    setShowLogoutDialog(false)
+    await performLogout()
+  }
 
   // Calculate counts
   const unreadMessagesCount = conversationsData?.conversations?.reduce((acc, chat) => acc + (chat.unread_count || 0), 0) || 0

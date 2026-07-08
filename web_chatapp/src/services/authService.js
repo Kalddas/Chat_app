@@ -61,7 +61,7 @@ export const authApi = createApi({
       query: (email) => ({
         url: "password/forgot",
         method: "POST",
-        body: { email },
+        body: { email: typeof email === "string" ? email.trim().toLowerCase() : email },
       }),
     }),
 
@@ -74,10 +74,14 @@ export const authApi = createApi({
     }),
 
     changePassword: builder.mutation({
-      query: ({ old_password, new_password, new_password_confirmation }) => ({
+      query: ({ old_password, new_password, password_confirmation, new_password_confirmation }) => ({
         url: "change-password",
         method: "POST",
-        body: { old_password, new_password, password_confirmation: new_password_confirmation },
+        body: {
+          old_password,
+          new_password,
+          password_confirmation: password_confirmation ?? new_password_confirmation,
+        },
       }),
     }),
 

@@ -13,6 +13,7 @@ import { useGetMatchesQuery } from "../../services/matchService"
 import { shouldShowMoodPrompt, setMoodPromptShown } from "@/lib/mood"
 import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import LoadingSpinner from "@/components/LoadingSpinner"
 import {
   Sheet,
   SheetContent,
@@ -37,9 +38,21 @@ export function ChatLayout() {
   })
   const rawProfile = profileData?.profile
   const profile =
-    rawProfile && user?.id && (rawProfile.user_id === user.id || rawProfile.id === user.id)
+    rawProfile && user?.id &&
+    (Number(rawProfile.user_id) === Number(user.id) || Number(rawProfile.id) === Number(user.id))
       ? rawProfile
       : null
+
+  // Reset chat UI when a different user signs in
+  useEffect(() => {
+    setCurrentView("chats")
+    setSelectedChat(null)
+    setSelectedChatInfo(null)
+    setRightPanelView("none")
+    setIsProfileModalOpen(false)
+    setShowMoodPrompt(false)
+    setShowWelcomeModal(false)
+  }, [user?.id])
 
   // Show mood prompt after login / every 24h based on last-shown timestamp
   useEffect(() => {
@@ -47,7 +60,7 @@ export function ChatLayout() {
     if (shouldShowMoodPrompt(user.id)) {
       setShowMoodPrompt(true)
     }
-  }, [user?.id, profileLoaded])
+  }, [user?.id, profileLoaded, profile])
 
   // Show welcome modal for first-time users
   useEffect(() => {
@@ -99,10 +112,12 @@ export function ChatLayout() {
     refetchProfile()
   }
 
-  if (!user) return null
+  if (!user?.id) {
+    return <LoadingSpinner />
+  }
 
   return (
-    <ChatsProvider>
+    <ChatsProvider key={user.id}>
       <MoodPromptModal
         open={showMoodPrompt}
         onClose={() => setShowMoodPrompt(false)}
@@ -156,7 +171,7 @@ export function ChatLayout() {
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col w-full md:w-auto">
           <ChatMain
-            key={selectedChat ?? "no-chat"} // stable key prevents message loss
+            key={`${user.id}-${selectedChat ?? "no-chat"}`}
             selectedChat={selectedChat}
             selectedChatInfo={selectedChatInfo}
             onContactInfoClick={() => setRightPanelView("contact-info")}

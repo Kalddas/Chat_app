@@ -24,3 +24,18 @@ export const store = configureStore({
       .concat(matchApi.middleware)
       .concat(reportApi.middleware),
 });
+
+/** Drop cached chat/profile/admin data (keep auth slice during login). */
+export function resetDataApiCaches() {
+  store.dispatch(chatApi.util.resetApiState());
+  store.dispatch(userApi.util.resetApiState());
+  store.dispatch(adminApi.util.resetApiState());
+  store.dispatch(matchApi.util.resetApiState());
+  store.dispatch(reportApi.util.resetApiState());
+}
+
+/** Drop all cached API data so the next user never sees the previous session. */
+export function resetAllApiCaches() {
+  resetDataApiCaches();
+  store.dispatch(authApi.util.resetApiState());
+}

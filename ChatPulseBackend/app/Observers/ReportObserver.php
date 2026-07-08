@@ -10,6 +10,7 @@ use App\Models\Report;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Notifications\AccountReportedWarningNotification;
+use Carbon\Carbon;
 
 class ReportObserver
 {
@@ -149,42 +150,48 @@ class ReportObserver
             }
         }
 
-        // 2) Ban permanently when user receives 4 or more total reports (per reset window)
-        if ($totalReportCount >= 4) {
+        // 2) Suspend when user receives 3 or more total reports (per reset window)
+        if ($totalReportCount >= 3) {
             if (!$profile || $profile->status === 'Banned') {
                 return;
             }
 
+            if ($profile->status === 'Suspended') {
+                $profile->suspended_until = Carbon::now()->addDays(10);
+                $profile->save();
+                return;
+            }
+
             $oldStatus = $profile->status;
-            $profile->status = 'Banned';
-            $profile->suspended_until = null; // Banned is permanent, no expiry
+            $profile->status = 'Suspended';
+            $profile->suspended_until = Carbon::now()->addDays(10);
             $profile->save();
 
             try {
                 AdminActionLog::create([
                     'admin_user_id'   => null,
                     'target_user_id'  => $reportedUserId,
-                    'action'          => 'user_auto_banned',
+                    'action'          => 'user_auto_suspended',
                     'details'         => [
                         'from' => $oldStatus,
-                        'to' => 'Banned',
-                        'reason' => 'User reported 4 or more times',
+                        'to' => 'Suspended',
+                        'reason' => 'User reported 3 or more times',
                         'report_id' => $report->id,
                         'total_report_count' => $totalReportCount,
                         'distinct_reporter_count' => $distinctReporterCount,
+                        'suspended_until' => $profile->suspended_until?->toDateTimeString(),
                     ],
-                    'description'     => "User automatically banned after receiving {$totalReportCount} reports.",
+                    'description'     => "User automatically suspended for 10 days after receiving {$totalReportCount} reports.",
                 ]);
             } catch (\Throwable $e) {
-                \Log::error('ReportObserver failed to create auto-ban action log', [
+                \Log::error('ReportObserver failed to create auto-suspension action log', [
                     'error' => $e->getMessage(),
                     'reported_user_id' => $reportedUserId,
                 ]);
             }
 
-            // Send LiveFlow chat message to notify user they are banned
             try {
-                $banText = 'Your account has been permanently banned due to multiple reports. If you believe this is a mistake, please contact support.';
+                $suspendText = 'Your account has been temporarily suspended for 10 days due to multiple reports. You can still sign in to contact support if you believe this is a mistake.';
 
                 $systemEmail = 'liveflow@system.local';
                 $systemUser = User::where('email', $systemEmail)->first();
@@ -226,18 +233,18 @@ class ReportObserver
                         'sender_id' => $systemUser->id,
                         'receiver_id' => $reportedUser->id,
                         'conversation_id' => $conversation->id,
-                        'text' => $banText,
+                        'text' => $suspendText,
                     ]);
 
                     try {
                         event(new ChatEvent($msg));
                     } catch (\Throwable $e) {
-                        \Log::warning('Broadcast LiveFlow ban message failed (non-fatal): ' . $e->getMessage());
+                        \Log::warning('Broadcast LiveFlow suspension message failed (non-fatal): ' . $e->getMessage());
                     }
                 }
-            } catch (\Throwable $chatBanError) {
-                \Log::error('ReportObserver failed to send LiveFlow chat ban message', [
-                    'error' => $chatBanError->getMessage(),
+            } catch (\Throwable $chatSuspendError) {
+                \Log::error('ReportObserver failed to send LiveFlow chat suspension message', [
+                    'error' => $chatSuspendError->getMessage(),
                     'reported_user_id' => $reportedUserId,
                     'report_id' => $report->id,
                 ]);

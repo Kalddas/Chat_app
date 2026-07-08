@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/contexts/AuthContext"
+import { useLogoutSession } from "@/hooks/useLogoutSession"
 import { Moon, Sun, Bell, Shield, Globe, Palette, SunMoon, Trash2 } from "lucide-react"
 import { useTheme } from "@/contexts/ThemeContext"
 import { useExportChatsReportMutation, useUpdateLanguageMutation, useGetUserProfileQuery } from "@/services/userService"
@@ -17,9 +18,10 @@ import { changeLanguage, AVAILABLE_LANGUAGES } from "@/i18n"
 
 export function SettingsView() {
   const { t, i18n } = useTranslation()
-  const { logout } = useAuth()
+  const { user } = useAuth()
+  const { performLogout, isLoggingOut } = useLogoutSession()
   const { theme, setTheme } = useTheme()
-  const { data: profileData } = useGetUserProfileQuery()
+  const { data: profileData } = useGetUserProfileQuery(undefined, { skip: !user?.id })
   const [updateLanguage, { isLoading: updatingLanguage }] = useUpdateLanguageMutation()
   
   const [settings, setSettings] = useState({
@@ -248,7 +250,7 @@ export function SettingsView() {
 
           <Separator className="bg-indigo-200 dark:bg-white/30" />
           
-          <Button variant="destructive" onClick={logout} className="w-full">
+          <Button variant="destructive" onClick={performLogout} disabled={isLoggingOut} className="w-full">
             {t('auth.signOut')}
           </Button>
         </CardContent>

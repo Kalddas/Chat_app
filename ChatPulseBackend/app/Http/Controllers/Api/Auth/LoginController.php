@@ -15,13 +15,14 @@ class LoginController extends Controller
     {
         try {
             $credentials = $request->validate([
-                'email' => ['required', 'email:rfc,dns'],
+                'email' => ['required', 'email:rfc'],
                 'password' => ['required']
             ], [
                 'email.email' => 'Please provide a valid email address'
             ]);
 
-            $user = User::with('profile')->where('email', $credentials['email'])->first();
+            $email = strtolower(trim($credentials['email']));
+            $user = User::with('profile')->whereRaw('LOWER(email) = ?', [$email])->first();
 
             if (!$user) {
                 return response()->json(["message" => __('auth.failed')], 401);
@@ -151,6 +152,10 @@ class LoginController extends Controller
         try {
             $user = $request->user();
             if ($user && $user->currentAccessToken()) {
+                if ($user->show_online_status) {
+                    $user->last_seen_at = now()->subMinutes(10);
+                    $user->save();
+                }
                 $user->currentAccessToken()->delete();
             }
 

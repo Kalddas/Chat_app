@@ -222,8 +222,8 @@ class User extends Authenticatable
             return false;
         }
 
-        // User is online if last seen within 5 minutes
-        return $this->last_seen_at->diffInMinutes(now()) < 5;
+        // User is online if active within the last 2 minutes (heartbeat every 30s)
+        return $this->last_seen_at->greaterThan(now()->subMinutes(2));
     }
 
     /**
@@ -233,23 +233,7 @@ class User extends Authenticatable
      */
     public function getOnlineStatusText(): string
     {
-        // If user has hidden their online status
-        if (!$this->show_online_status) {
-            return 'Hidden';
-        }
-
-        // If no last_seen_at
-        if (!$this->last_seen_at) {
-            return 'Offline';
-        }
-
-        // If online (active in last 5 minutes)
-        if ($this->isOnline()) {
-            return 'Online';
-        }
-
-        // Return relative time
-        return 'Last seen ' . $this->last_seen_at->diffForHumans();
+        return $this->isOnline() ? 'Online' : 'Offline';
     }
 }
 
